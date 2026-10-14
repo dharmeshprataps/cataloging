@@ -90,7 +90,7 @@ function blockFields(body: string): Record<string, string> {
   for (const line of body.split('\n')) {
     if (/^\s*-/.test(line)) continue;
     const match = /^[ \t]*([A-Za-z][\w-]*):[ \t]*(.*)$/.exec(line);
-    if (match) fields[match[1]!] = match[2]!.trim();
+    if (match) fields[match[1]!] = stripYamlComment(match[2]!).trim();
   }
   return fields;
 }
@@ -165,20 +165,164 @@ function workflowJobs(workflowText: string): Job[] {
 }
 
 /**
- * Whether a condition disables its job or step however the workflow is run.
- *
- * Both spellings GitHub accepts for a literal are recognised — `if: false` and
- * `if: ${{ false }}` — plus the literal `0`. Anything the expression language
- * computes from context (a matrix value, `github.event`, a comparison) is
- * deliberately left alone: a static reader cannot decide it, and guessing would
- * report a working workflow as broken. The gap that leaves is recorded in §7.4 of
- * the change spec.
+ * A scalar's value with its YAML comment removed: a `#` that starts the value or
+ * follows whitespace begins a comment, while a `#` inside a word or a quoted
+ * scalar does not. Without this, `if: false # off` read as the literal
+ * `false # off` and a disabled step counted as executed.
  */
+function stripYamlComment(value: string): string {
+  let quote: string | undefined;
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i]!;
+    if (quote !== undefined) {
+      if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === '#' && (i === 0 || /\s/.test(value[i - 1]!))) return value.slice(0, i);
+  }
+  return value;
+}
+
+type Constant = { decided: true; truthy: boolean } | { decided: false };
+
+/** Lex one constant expression into atoms: literals, operators, parentheses. */
+function tokenizeExpression(input: string): string[] | undefined {
+  const tokens: string[] = [];
+  const pattern = /^(?:\s+)([\s\S]*)$|^(true|false|null|'[^']*'|"[^"]*"|-?\d+(?:\.\d+)?)([\s\S]*)$|^(==|!=|&&|\|\||!|\(|\))([\s\S]*)$/;
+  let rest = input;
+  while (rest.trim() !== '') {
+    const match = pattern.exec(rest);
+    if (!match) return undefined;
+    if (match[1] !== undefined) rest = match[1];
+    else if (match[2] !== undefined) {
+      tokens.push(match[2]);
+      rest = match[3]!;
+    } else {
+      tokens.push(match[4]!);
+      rest = match[5]!;
+    }
+  }
+  return tokens;
+}
+
+/**
+ * The truth of a condition that is constant by syntax alone, or "undecided".
+ *
+ * Recognised: the literals `true`, `false`, `0`, `null`, `''`, quoted strings and
+ * numbers; `!` negation; `&&`/`||` when one operand settles it (`false && x` is
+ * false whatever `x` is); and `==`/`!=` between two literals, evaluated with the
+ * loose coercion GitHub documents. Anything that reads context — `github.event`,
+ * `matrix.os`, `secrets.*`, or a bare identifier of any kind — is undecided.
+ *
+ * This is deliberately not an expression language. It is the subset a static
+ * reader can decide without guessing, and the residual is recorded in §7.4 of the
+ * change spec.
+ */
+function constantCondition(input: string): Constant {
+  const wrapped = /^\$\{\{\s*([\s\S]*?)\s*\}\}$/.exec(input.trim());
+  const tokens = tokenizeExpression(wrapped ? wrapped[1]! : input);
+  if (tokens === undefined) return { decided: false };
+
+  let index = 0;
+  const peek = (): string | undefined => tokens[index];
+  const next = (): string | undefined => tokens[index++];
+
+  /** GitHub's loose ==: two literals of the same type compare directly. */
+  const literalsEqual = (left: string, right: string): boolean | undefined => {
+    const asValue = (token: string): string | number | boolean | null | undefined => {
+      if (token === 'true') return true;
+      if (token === 'false') return false;
+      if (token === 'null') return null;
+      if (/^'.*'$/.test(token) || /^".*"$/.test(token)) return token.slice(1, -1);
+      if (/^-?\d+(?:\.\d+)?$/.test(token)) return Number(token);
+      return undefined;
+    };
+    const a = asValue(left);
+    const b = asValue(right);
+    if (a === undefined || b === undefined) return undefined;
+    // A quoted string and a number are compared as numbers by GitHub's coercion.
+    if ((typeof a === 'string') !== (typeof b === 'string')) return Number(a) === Number(b);
+    return a === b;
+  };
+
+  const literalTruth = (token: string | undefined): boolean | undefined => {
+    if (token === undefined) return undefined;
+    if (token === 'false' || token === 'null') return false;
+    if (token === 'true') return true;
+    if (/^-?\d+(?:\.\d+)?$/.test(token)) return Number(token) !== 0;
+    if (/^'.*'$/.test(token) || /^".*"$/.test(token)) return token.slice(1, -1) !== '';
+    return undefined;
+  };
+
+  function unary(): Constant {
+    if (peek() === '!') {
+      next();
+      const operand = unary();
+      if (!operand.decided) return operand;
+      return { decided: true, truthy: !operand.truthy };
+    }
+    if (peek() === '(') {
+      next();
+      const inner = or();
+      if (next() !== ')') return { decided: false };
+      return inner;
+    }
+    const token = next();
+    const truth = literalTruth(token);
+    if (truth === undefined) return { decided: false };
+    if (peek() === '==' || peek() === '!=') {
+      const negate = next() === '!=';
+      const right = next();
+      const equal = right === undefined ? undefined : literalsEqual(token!, right);
+      if (equal === undefined) return { decided: false };
+      return { decided: true, truthy: negate ? !equal : equal };
+    }
+    return { decided: true, truthy: truth };
+  }
+
+  function and(): Constant {
+    let result = unary();
+    while (peek() === '&&') {
+      next();
+      const right = unary();
+      // One false operand settles it even when the other reads context.
+      const falsy = (c: Constant): boolean => c.decided && !c.truthy;
+      if (falsy(result)) continue;
+      if (falsy(right)) result = { decided: true, truthy: false };
+      else if (result.decided && right.decided) result = { decided: true, truthy: true };
+      else result = { decided: false };
+    }
+    return result;
+  }
+
+  function or(): Constant {
+    let result = and();
+    while (peek() === '||') {
+      next();
+      const right = and();
+      const truthy = (c: Constant): boolean => c.decided && c.truthy;
+      if (truthy(result)) continue;
+      if (truthy(right)) result = { decided: true, truthy: true };
+      else if (result.decided && right.decided) result = { decided: true, truthy: false };
+      else result = { decided: false };
+    }
+    return result;
+  }
+
+  const result = or();
+  if (index !== tokens.length) return { decided: false };
+  return result;
+}
+
+/** Whether a condition disables its job or step however the workflow is run. */
 function staticallyDisabled(condition: string | undefined): boolean {
   if (condition === undefined) return false;
-  const expression = /^\$\{\{\s*(.*?)\s*\}\}$/.exec(condition.trim());
-  const literal = (expression ? expression[1]! : condition).trim().replace(/^['"]|['"]$/g, '');
-  return literal === 'false' || literal === '0';
+  const decision = constantCondition(stripYamlComment(condition));
+  return decision.decided && !decision.truthy;
 }
 
 /**
@@ -430,6 +574,48 @@ describe('the CI workflow rules fail when violated', () => {
     expect(unexecutedCitationSources(probe, citationSources, repoRoot, packageJson.scripts ?? [])).toEqual([
       'scripts/verify-e2e.ts carries a citation but no CI step runs it',
     ]);
+  });
+
+  it('TOOL-003 refuses a literal false that carries a YAML comment', () => {
+    // GitHub strips the comment and skips the step; a reader that keeps it as
+    // part of the scalar reads `false # off` and calls the step live.
+    const stepProbe = readWorkflow().replace(
+      '      - name: End-to-end checks\n        run: pnpm verify:e2e',
+      '      - name: End-to-end checks\n        if: false # off\n        run: pnpm verify:e2e',
+    );
+    const jobProbe = readWorkflow().replace('  e2e:\n    name: e2e\n', '  e2e:\n    name: e2e\n    if: false # off\n');
+    expect(stepProbe).not.toBe(readWorkflow());
+    expect(jobProbe).not.toBe(readWorkflow());
+    expect(unexecutedCitationSources(stepProbe, citationSources, repoRoot, packageJson.scripts ?? [])).toEqual([
+      'scripts/verify-e2e.ts carries a citation but no CI step runs it',
+    ]);
+    expect(missingChecks(jobProbe, packageJson.scripts ?? {})).toContain(
+      'e2e job is disabled by `if: false`',
+    );
+    expect(unexecutedCitationSources(jobProbe, citationSources, repoRoot, packageJson.scripts ?? [])).toEqual([
+      'scripts/verify-e2e.ts carries a citation but no CI step runs it',
+    ]);
+  });
+
+  it('TOOL-003 refuses a constant condition that is false by the expression, not a literal', () => {
+    const probes: [string, string][] = [
+      ['if: ${{ !true }}', '!true'],
+      ['if: 1 == 2', '1 == 2'],
+    ];
+    for (const [condition, label] of probes) {
+      const probe = readWorkflow().replace(
+        '  e2e:\n    name: e2e\n',
+        `  e2e:\n    name: e2e\n    ${condition}\n`,
+      );
+      expect(probe, label).not.toBe(readWorkflow());
+      expect(missingChecks(probe, packageJson.scripts ?? {}).join('\n'), label).toContain(
+        'e2e job is disabled by',
+      );
+      expect(
+        unexecutedCitationSources(probe, citationSources, repoRoot, packageJson.scripts ?? []),
+        label,
+      ).toEqual(['scripts/verify-e2e.ts carries a citation but no CI step runs it']);
+    }
   });
 
   it('TOOL-003 leaves a condition it cannot decide alone, rather than calling it disabled', () => {

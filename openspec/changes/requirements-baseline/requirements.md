@@ -1087,8 +1087,9 @@ that no machine-absolute path literal appears in either script.
 `.github/workflows/ci.yml` runs on every pull request, on every push to `main`,
 and on `workflow_dispatch`. Four independent jobs — `typecheck`, `build`, `test`
 and `e2e` — install with the package manager `package.json` pins (`corepack
-enable` reads `packageManager`) on Node `24.x`, the floor `engines.node` declares,
-so a break on the oldest supported runtime is caught rather than assumed. `test`
+enable` reads `packageManager`) on Node `24`, the major `engines.node` declares.
+The pin names the major alone rather than `24.x`, which would re-resolve on every
+run, so a break on the oldest supported runtime is caught rather than assumed. `test`
 runs `pnpm test`, which is vitest **and** the `spec:status` gate; `e2e` runs
 `pnpm verify:e2e`, the gate's `citationSources` entry and therefore the only
 evidence behind `SIM-003`, so no requirement's sole evidence is a check no

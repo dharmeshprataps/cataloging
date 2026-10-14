@@ -24,7 +24,7 @@
 | **Approval record** | `/approve` on https://github.com/dharmeshprataps/cataloging/issues/4#issuecomment-6174542684 (2026-10-14T17:41:36Z), answering the discovery questions at [#issuecomment-6174492546](https://github.com/dharmeshprataps/cataloging/issues/4#issuecomment-6174492546). The operator later confirmed, in session, (a) that this specification may be authored and its `Status: APPROVED` recorded from that `/approve`, and (b) that the change is stacked on PR #6 rather than absorbing it. |
 | **Issue** | https://github.com/dharmeshprataps/cataloging/issues/4 |
 | **Branch** | `agent/ci-traceability-gate`, based on `agent/requirements-baseline-findings` (`ca7c528`) |
-| **Revised** | 2026-10-14 — §2, §3 (AC-5 plus the status note), §4 (D6), §6, §7 and §9 amended during implementation: CI enforcement became baseline requirement `TOOL-003` after the traceability gate rejected the new test file for citing no requirement, and the baseline's counts moved with it. **Then revised again in review remediation**, after independent review at `1077aeca` found the evidence section contradicting CI reality: §3's status note, §4 (D2 and D5), §7 and §8 are rewritten against run [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270), which executed all four jobs green at the reviewed head SHA — and against the probe run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202), which is AC-3's failing run. AC-3's falsification probe was pushed and reverted, the citation guard was made to honour a job's or step's effective `if`, the Node pin was changed from `24.x` to `24`, and `TOOL-003`'s declaration in `traceability.yaml` moved from 14 citations to 17 as the three new falsification cases were added. The earlier claim that no workflow in this repository has ever executed was true only until 18:07:03Z on 2026-10-14 and is deleted rather than left to age. §1 and §5 are unchanged. The revision is recorded rather than silent because it changes the change's outputs and its evidence, not its acceptance criteria. |
+| **Revised** | 2026-10-14 — §2, §3 (AC-5 plus the status note), §4 (D6), §6, §7 and §9 amended during implementation: CI enforcement became baseline requirement `TOOL-003` after the traceability gate rejected the new test file for citing no requirement, and the baseline's counts moved with it. **Then revised again in review remediation**, after independent review at `1077aeca` found the evidence section contradicting CI reality: §3's status note, §4 (D2 and D5), §7 and §8 are rewritten against run [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270), which executed all four jobs green at the reviewed head SHA — and against the probe run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202), which is AC-3's failing run. AC-3's falsification probe was pushed and reverted, the citation guard was made to honour a job's or step's effective `if`, the Node pin was changed from `24.x` to `24`, and `TOOL-003`'s declaration in `traceability.yaml` moved from 14 citations to 17 as the three new falsification cases were added. The earlier claim that no workflow in this repository has ever executed was true only until 18:07:03Z on 2026-10-14 and is deleted rather than left to age. §1 and §5 are unchanged. The revision is recorded rather than silent because it changes the change's outputs and its evidence, not its acceptance criteria. **Then revised a third time**, after independent review at `b79177f` reproduced the AC-4 defect one spelling further out: the guard kept a YAML comment as part of a scalar, so `if: false # off` counted as executed, and it matched the literal spellings `false`/`0` rather than parsing the condition, so `${{ !true }}` and `1 == 2` were missed too. `tests/ci-workflow.test.ts` now strips YAML comments from scalar values and decides a constant condition (`!`, `==`/`!=` between literals, and `&&`/`||` with one settling operand) while leaving anything that reads context undecided; `TOOL-003`'s declaration moved 17 → 19 citations. The suite is 261 tests. §3 (AC-4), §7.2, §7.4, §7.5 and §8 are amended, and §7.4's residual is restated as a boundary rather than a guarantee. |
 
 > **This change adds a workflow and the tests that hold it in place. It changes no
 > product code, no gate rule, and no requirement's verification class.** Its whole
@@ -102,7 +102,7 @@ than asserted.
 | AC-1 | **Clean-checkout runnability.** On a host with only Node ≥ 24 and pnpm on `PATH`, the suite and the gate run and pass; `run.sh`/`test.sh` contain no absolute machine path (asserted, not reviewed); `NODE_BIN`/`PNPM_BIN` still select a runtime when set. | Delivered by PR #6 (`scripts/lib/tooling.ts`, `TOOL-002`), which this branch is based on. The CI run is the strongest available form of the claim: a GitHub runner has no `DSH_RUNTIME_ROOT` and no developer directory, and the `test` job runs the suite **through `./test.sh`** there. |
 | AC-2 | **CI enforcement.** `.github/workflows/` gains a job triggered on `pull_request` and `push` to `main` that installs with the pinned pnpm and Node ≥ 24 and runs typecheck, build, `pnpm test` and `pnpm verify:e2e`; the adding PR shows a green run at its own head SHA. | `.github/workflows/ci.yml`; `tests/ci-workflow.test.ts` asserts the triggers, the four commands, the Node floor and the package-manager pin. Green run URL in §7. |
 | AC-3 | **Falsification.** A probe that breaks a citation turns the CI job red; the broken commit and the failing run URL are recorded in the PR body, then reverted. | §7 records the probe commit, the failing run URL, the exact violation, and the revert commit. |
-| AC-4 | **No unexecuted sole evidence.** `SIM-003`'s only citation is executed by the workflow. | The `e2e` job runs `scripts/verify-e2e.ts`, the gate's `citationSources` entry that carries the `// SIM-003` comment. `tests/ci-workflow.test.ts` mechanises the rule: any citation source outside the suite that carries a `// ID` comment and is reached by no executing step fails the suite. A step is executing only when its job and the step itself are not disabled by a statically false `if:`; `if: ${{ false }}` on the step and `if: false` on the job are both refused (§7.3). |
+| AC-4 | **No unexecuted sole evidence.** `SIM-003`'s only citation is executed by the workflow. | The `e2e` job runs `scripts/verify-e2e.ts`, the gate's `citationSources` entry that carries the `// SIM-003` comment. `tests/ci-workflow.test.ts` mechanises the rule: any citation source outside the suite that carries a `// ID` comment and is reached by no executing step fails the suite. A step is executing only when its job and the step itself are not disabled by a statically false `if:` — read with its YAML comment stripped and parsed rather than string-matched, so `if: false`, `if: ${{ false }}`, `if: false # off`, `if: ${{ !true }}` and `if: 1 == 2` are all refused while a context-dependent condition is left alone (§7.4). |
 | AC-5 | **Honest bookkeeping.** The change records which baseline statements it supersedes, and leaves §10's "prose counts match the index" declared manual. | §6; `requirements-baseline/README.md` limitation 3 and `requirements-baseline/spec.md` §9/§10 edited. §10's prose-counts row is untouched. The counts this change moves are reconciled through `TOOL-003` (D6). |
 | AC-6 | **Reproducible results.** The PR body cites the workflow run URL for the same head SHA it claims, not only local output. | PR body; §7. |
 
@@ -113,6 +113,12 @@ that turned the `test` job red on a real run (§7.3) and was then reverted; the
 red-to-green pair on the same workflow is the strongest form the criterion can
 take. AC-6 is satisfied by the pull request body, which cites the green run URL and
 the SHA it belongs to.
+
+AC-4 took two rounds. The first remediation made the guard honour a job's or step's
+`if:`; the second, after review at `b79177f` reproduced the same defect one spelling
+further out, made it read scalars with their YAML comment removed and parse the
+condition rather than match its spelling (§7.4). Both rounds added falsification
+cases rather than a claim.
 
 This reverses the previous revision's position, and the reversal is the point. At
 `14ad34b` GitHub Actions could not start a job on this account — the annotation was
@@ -300,20 +306,23 @@ act on this change's behalf for the head commit's run.
 ```
 typecheck    tsc --noEmit -p tsconfig.check.json   clean
 build        tsc -p tsconfig.json                  ok
-test         vitest 15 files, 259 tests pass; gate RESULT: PASS
+test         vitest 15 files, 261 tests pass; gate RESULT: PASS
              (0 warning(s)) — 159 requirements, 152 verified,
              4 unverified, 3 n/a
 verify:e2e   all checks pass (real HTTP, faked boundaries)
 ```
 
-The test count rose from the 256 recorded at `14ad34b` to 259 because review
-remediation adds three falsification cases to `tests/ci-workflow.test.ts` — a
-citation reached only through a step disabled with `if: ${{ false }}`, a required
-job disabled with `if: false`, and a computed condition that must be left alone.
-`TOOL-003`'s declaration in `traceability.yaml` moves with them, 14 citations to
-17, so the gate's "declared test citations match the tests that cite them" rule
-stays satisfied. The requirement counts are unchanged: 159 requirements, 152
-verified, 4 unverified, 3 n/a, read from `pnpm spec:status`.
+The test count rose from the 256 recorded at `14ad34b` to 259 because the first
+review remediation added three falsification cases to `tests/ci-workflow.test.ts` —
+a citation reached only through a step disabled with `if: ${{ false }}`, a required
+job disabled with `if: false`, and a computed condition that must be left alone —
+and then to 261 because the second review remediation added two more: a literal
+`false` carrying a YAML comment (`if: false # off`), and a constant expression that
+is false by evaluation rather than by literal spelling (`${{ !true }}`, `1 == 2`).
+`TOOL-003`'s declaration in `traceability.yaml` moves with each addition, 14
+citations to 19, so the gate's "declared test citations match the tests that cite
+them" rule stays satisfied. The requirement counts are unchanged: 159 requirements,
+152 verified, 4 unverified, 3 n/a, read from `pnpm spec:status`.
 
 ### 7.3 Falsification (AC-3), as a pushed probe with a real red run
 
@@ -365,15 +374,36 @@ problems.
 
 The guard now reads each job's own `if:` and each step's own `if:` and treats a
 citation source as executed only when it is reached by a step in a job whose
-effective condition is not statically false. Both spellings of a literal are
-recognised — `if: false` and `if: ${{ false }}`. A condition the expression language
-computes from context is deliberately left alone: a static reader cannot decide it,
-and guessing would report a working workflow as broken. That residual gap is real
-and is stated here rather than implied by the function's name; closing it properly
-needs a condition evaluator, which is out of scope for this change (`scripts/verify-spec.ts`
-rules are explicitly out of scope in §2). What is closed is the case review
-reproduced, and `missingChecks` now also reports a required job disabled by
-`if: false` instead of silently accepting it.
+effective condition is not statically false.
+
+**The revision after that.** Independent review at `b79177f` then found the same
+class one spelling further out, and it was right. The reader kept a YAML comment as
+part of the value, so `if: false # off` — the literal `false` plus a legal comment
+GitHub strips — read as the unknown string `false # off` and counted as executed;
+and it recognised `false`/`0` by spelling alone, so `${{ !true }}` and `1 == 2`,
+which are false without reading any context, were missed too. Both are closed:
+
+- scalars are read with their YAML comment removed, so `if: false # off` is the
+  literal it is;
+- the condition is parsed rather than matched — literals (`true`, `false`, `null`,
+  `''`, quoted strings, numbers), `!` negation, `==`/`!=` between two literals with
+  GitHub's documented loose coercion, and `&&`/`||` when one operand settles the
+  result whatever the other reads. `false && anything` is false; `true && x` stays
+  undecided.
+
+**The boundary, stated as a boundary rather than as a guarantee.** What is decided
+is the subset a static reader can decide without guessing: constants, and
+comparisons between constants. A condition whose truth needs a value from context —
+`github.event_name == 'workflow_dispatch'`, `matrix.os`, `secrets.X != ''` — is
+undecided, and undecided is treated as *live*, not as disabled, because reporting a
+working workflow as broken costs more than the residual it leaves. So the honest
+statement of the residual is: **no expression evaluation beyond constants and
+constant comparisons.** `if: ${{ 1 == 2 }}` is refused; `if: ${{ vars.FLAG == 'no' }}`
+is not, and cannot be without an evaluator that resolves contexts, which is out of
+scope here (`scripts/verify-spec.ts` rules are explicitly out of scope in §2). What
+is closed is every case review reproduced across two rounds, and `missingChecks` now
+also reports a required job disabled by any statically false condition instead of
+silently accepting it.
 
 ### 7.5 The green run for the final revision
 
@@ -396,7 +426,8 @@ green with it restored and the guard corrected.
 | It uses the Node floor and the package-manager pin `package.json` already declares, with no second version literal | `tests/ci-workflow.test.ts` — `runtimeProblems`. |
 | It is read-only and references no secret or developer `.env` | `tests/ci-workflow.test.ts` — `permissionProblems`. |
 | No citation source outside the suite carries evidence no CI step executes | `tests/ci-workflow.test.ts` — `unexecutedCitationSources`, over the gate's own `citationSources`. |
-| A citation reached only by a statically disabled step or job is not counted as executed | `tests/ci-workflow.test.ts` — the `if: ${{ false }}` step and `if: false` job cases; both were confirmed red before the fix, and are reproduced in §7.4. |
+| A citation reached only by a statically disabled step or job is not counted as executed | `tests/ci-workflow.test.ts` — the `if: ${{ false }}` step and `if: false` job cases, plus the review-round-two cases: a literal `false` carrying a YAML comment on a step and on a job, and `${{ !true }}` / `1 == 2` on a job. Every one was confirmed red before the fix and green after; they are reproduced in §7.4. |
+| A condition that needs a value from context is left alone rather than called disabled | `tests/ci-workflow.test.ts` — the `github.event_name == 'workflow_dispatch'` case, which must report no problem; the residual this leaves is stated in §7.4 rather than implied. |
 | Each of those rules fails when violated | `tests/ci-workflow.test.ts` — one falsification case per rule, mutating the real workflow text. |
 | A broken citation turns CI red | Run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202), §7.3, then reverted. |
 | The suite and the gate still pass, and the baseline counts still reconcile | `pnpm test` locally and in CI; `pnpm spec:status` remains the authority for the counts. |

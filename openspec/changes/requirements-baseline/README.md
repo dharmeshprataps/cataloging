@@ -91,7 +91,7 @@ exercises:
 | `openspec/changes/requirements-baseline/` | The baseline: spec, catalogue, traceability index, problems, decisions, findings, template. |
 | `scripts/verify-spec.ts`, `spec-status.ts`, `sync-traceability.ts`, `lib/yaml.ts` | The gate, its report CLI, the citation-count sync, and the YAML reader the gate needs. The metadata check scans every artifact (`TOOL-001`). |
 | `scripts/lib/tooling.ts`, `scripts/run-tool.mjs` | Runtime selection for `run.sh`, in a module a test can execute (`TOOL-002`). |
-| `tests/` | The suite: 256 tests in 15 files, including `tests/spec-gate.test.ts`, `tests/tooling.test.ts`, `tests/ci-workflow.test.ts`, and the outbound WhatsApp Cloud API path. |
+| `tests/` | The suite: 261 tests in 15 files, including `tests/spec-gate.test.ts`, `tests/tooling.test.ts`, `tests/ci-workflow.test.ts`, and the outbound WhatsApp Cloud API path. |
 | `src/` | The product implementation the suite measures. It introduces no behaviour the baseline does not describe. |
 | `Dockerfile`, `fly.toml`, `.env.example`, `run.sh`, `test.sh` | Minimum infrastructure so the suite and gate run in a clean checkout — a claim `run.sh` did not meet until it stopped deriving its runtime from one machine's path (`TOOL-002`). |
 
