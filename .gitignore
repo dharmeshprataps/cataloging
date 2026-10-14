@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Node service build output and runtime data
+/dist
+/data
+.env.local
+*.log
