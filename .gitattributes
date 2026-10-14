@@ -1,0 +1,15 @@
+# Normalise line endings so the repo behaves the same on any machine.
+* text=auto eol=lf
+
+# Binary assets should never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.node binary
+
+# The lockfile is generated: collapse it in diffs and skip it in reviews.
+pnpm-lock.yaml linguist-generated=true -diff
+
+# Explicit so a Windows checkout still runs the scripts under Git Bash/WSL.
+*.sh text eol=lf

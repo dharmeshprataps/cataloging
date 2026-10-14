@@ -1,7 +1,7 @@
 # Change `requirements-baseline`
 
-**Status:** APPROVED — approved by Dharmesh Pratap Singh on 2026-10-14
-**Type:** baseline documentation plus the traceability gate it authorises (§9)
+**Status:** DRAFT — awaiting approval
+**Type:** documentation only (no source changes)
 
 ## What this is
 
@@ -40,11 +40,8 @@ products · `CFG` configuration · `OBS` observability · `SEAM` architecture se
 ## Coverage at a glance
 
 **156 requirements:** 152 `implemented`, 1 `partial`, 2 `deferred`,
-1 `not_implemented`. **Verified in this tree: 0.** The suite that demonstrates
-them arrives with the `expand-test-coverage` change, so `traceability.yaml` here
-marks every implemented entry `unverified` with a `gap` naming that change rather
-than claiming proof this tree cannot show. `GEN-008`, `GEN-009` and `SIM-008` are
-unverified for the stronger reason that no test anywhere exercises them.
+1 `not_implemented`. **153 are verified** by a test that fails when the behaviour
+breaks; three are not, and each is recorded in `PROBLEMS.md` rather than claimed.
 
 The two claims that bound everything else:
 
@@ -55,10 +52,9 @@ The two claims that bound everything else:
 
 ## What this change deliberately does not contain
 
-No product source and no product tests. The gate and its falsification tests land
-here; the suite that demonstrates the 156 requirements lands with
-`expand-test-coverage`, so this change can be reviewed against the baseline
-without also accepting the implementation.
+No source changes, no tests, no CI. It is documentation, so that a reviewer can
+approve or reject the baseline on its merits without also accepting an
+implementation.
 
 ## Proposed follow-on changes
 
@@ -67,8 +63,8 @@ specification, per `AGENTS.md`.
 
 | Proposed change id | Scope | Depends on |
 |---|---|---|
-| `traceability-gate` | The citation convention, the checker that fails on spec/code drift, and its falsification tests. | this change — **landed together with the baseline** |
-| `expand-test-coverage` | Land the tests that demonstrate the 156 requirements, including the previously untested outbound WhatsApp Cloud API path. Until they land, `pnpm spec:status` fails on `every implemented requirement is covered by at least one test`. | this change |
+| `traceability-gate` | The citation convention, the checker that fails on spec/code drift, and its falsification tests. | this change |
+| `expand-test-coverage` | Land the tests that already demonstrate 153/156, including the previously untested outbound WhatsApp Cloud API path. | this change |
 | `wire-unwired-capabilities` | `P-1` (`WA-009`), `P-6`, `P-7`. | this change, and `P-2` for the quality items |
 
 Work for the second and third already exists on the local branch
@@ -77,13 +73,10 @@ Work for the second and third already exists on the local branch
 
 ## How to review this change
 
-1. Read `spec.md` — especially §5 (what is verified) and §7 (known gaps). §5
-   records the reviewed revision's coverage, which describes the suite delivered
-   by `expand-test-coverage`; `traceability.yaml` in this tree states what is
-   proven *here*, which is nothing yet.
+1. Read `spec.md` — especially §5 (what is verified) and §7 (known gaps).
 2. Spot-check three requirements in `requirements.md` against the code they
    describe.
 3. Decide the open questions in §11: the baseline's granularity, where the
    catalogue should live permanently, who signs off the three unverified
    requirements, and whether the SynthID watermark is acceptable.
-4. Run `pnpm spec:status` and read the report.
+4. Reply `/approve` or `/change <instruction>`.

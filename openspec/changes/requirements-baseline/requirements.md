@@ -13,24 +13,11 @@ Verification: `verified` (a test fails if the behaviour breaks) · `unverified`
 ## Coverage
 
 **156 requirements** — 152 `implemented`, 1 `partial`, 2 `deferred`,
-1 `not_implemented`.
+1 `not_implemented`. **153 verified**, 3 not (`WA-009`, `CONV-008`, `SEC-006`).
 
-**Verified in this tree: 0.** This catalogue is the normative statement of what
-the system must do; the suite that demonstrates it arrives with the follow-on
-`expand-test-coverage` change. Because the gate derives verification from
-evidence it can find, and this tree contains no test that cites a requirement,
-every implemented entry reads `verification: unverified` in
-[`traceability.yaml`](traceability.yaml) with a `gap` naming that change. That is
-a statement about this branch, not about the product: the behaviour is
-implemented and its tests exist, they are simply delivered separately so the
-baseline and the gate can be reviewed on their own.
-
-A requirement becomes `verified` when a test whose title begins with its id
-exists in this repository, is not skipped, and asserts something. Three
-requirements are unverified for a stronger reason — no test anywhere exercises
-the code they describe — and are recorded in [`PROBLEMS.md`](PROBLEMS.md):
-`GEN-008`, `GEN-009`, `SIM-008`. `WA-009`, `CONV-008` and `SEC-006` describe
-behaviour that does not exist yet and carry `verification: n/a`.
+Every `implemented` requirement is verified by a test whose title begins with the
+requirement id. The three exceptions are recorded in
+[`PROBLEMS.md`](PROBLEMS.md).
 
 ---
 

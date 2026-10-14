@@ -15,9 +15,11 @@ Post one command as its own comment:
 | Command | Result |
 | --- | --- |
 | `/approve` | Mark the current specification approved and start implementation. |
-| `/change <instruction>` | Revise the specification before implementation. |
+| `/change <instruction>` | Revise the specification or active work. |
 | `/status` | Report phase, active branch/PR, checks, and blockers. |
+| `/stop` | Pause work immediately; no further commits or pushes. |
 | `/review` | Start an independent review of a ready PR. |
+| `/archive` | Archive a completed, human-merged specification. |
 
 ## Updates you will receive
 
