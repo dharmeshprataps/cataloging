@@ -6,7 +6,8 @@
 | **Title** | Requirement baseline and traceability convention |
 | **Change** | `requirements-baseline` |
 | **Owner** | Dharmesh Pratap Singh (operator) |
-| **Status** | DRAFT — awaiting human approval |
+| **Status** | APPROVED |
+| **Approved** | 2026-10-14 |
 | **Created** | 2026-10-14 |
 | **Last modified** | 2026-10-14 |
 | **Source classification** | MIXED |
@@ -19,7 +20,8 @@
 |---|---|
 | **Spec** | `openspec/changes/requirements-baseline/spec.md` |
 | **Author** | DSH implementation agent (session on `dharmeshprats/cataloging`) |
-| **Approved by** | — |
+| **Approved by** | Dharmesh Pratap Singh (operator) |
+| **Approval record** | `/approve` on https://github.com/dharmeshprataps/cataloging/pull/2#issuecomment-6173700774 (2026-10-14T16:57:30Z) |
 
 > **This specification is documentation only.** It establishes the requirement
 > baseline and the traceability convention for the existing system. It contains
@@ -279,4 +281,7 @@ These need a human decision; the agent has deliberately not assumed an answer.
 Reply `/approve` to authorize implementation, or `/change <instruction>` to
 revise this specification.
 
-Status: DRAFT
+Status: APPROVED — approved by Dharmesh Pratap Singh on 2026-10-14
+(`/approve` on https://github.com/dharmeshprataps/cataloging/pull/2#issuecomment-6173700774).
+Recorded here by the implementation agent; §1–§11 are unmodified from the
+reviewed revision.
