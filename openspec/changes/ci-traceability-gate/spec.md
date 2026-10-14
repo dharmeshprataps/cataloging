@@ -24,7 +24,7 @@
 | **Approval record** | `/approve` on https://github.com/dharmeshprataps/cataloging/issues/4#issuecomment-6174542684 (2026-10-14T17:41:36Z), answering the discovery questions at [#issuecomment-6174492546](https://github.com/dharmeshprataps/cataloging/issues/4#issuecomment-6174492546). The operator later confirmed, in session, (a) that this specification may be authored and its `Status: APPROVED` recorded from that `/approve`, and (b) that the change is stacked on PR #6 rather than absorbing it. |
 | **Issue** | https://github.com/dharmeshprataps/cataloging/issues/4 |
 | **Branch** | `agent/ci-traceability-gate`, based on `agent/requirements-baseline-findings` (`ca7c528`) |
-| **Revised** | 2026-10-14 — §2, §3 (AC-5 plus the status note), §4 (D6), §6, §7 and §9 amended during implementation: CI enforcement became baseline requirement `TOOL-003` after the traceability gate rejected the new test file for citing no requirement, the baseline's counts moved with it, and GitHub Actions was found to be unable to start a job on this account (billing lock), which blocks the run-sourced half of AC-2, AC-3 and AC-6. §1 and §5 are unchanged. The revision is recorded rather than silent because it changes the change's outputs and its evidence, not its acceptance criteria. |
+| **Revised** | 2026-10-14 — §2, §3 (AC-5 plus the status note), §4 (D6), §6, §7 and §9 amended during implementation: CI enforcement became baseline requirement `TOOL-003` after the traceability gate rejected the new test file for citing no requirement, and the baseline's counts moved with it. **Then revised again in review remediation**, after independent review at `1077aeca` found the evidence section contradicting CI reality: §3's status note, §4 (D2 and D5), §7 and §8 are rewritten against run [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270), which executed all four jobs green at the reviewed head SHA — and against the probe run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202), which is AC-3's failing run. AC-3's falsification probe was pushed and reverted, the citation guard was made to honour a job's or step's effective `if`, the Node pin was changed from `24.x` to `24`, and `TOOL-003`'s declaration in `traceability.yaml` moved from 14 citations to 17 as the three new falsification cases were added. The earlier claim that no workflow in this repository has ever executed was true only until 18:07:03Z on 2026-10-14 and is deleted rather than left to age. §1 and §5 are unchanged. The revision is recorded rather than silent because it changes the change's outputs and its evidence, not its acceptance criteria. |
 
 > **This change adds a workflow and the tests that hold it in place. It changes no
 > product code, no gate rule, and no requirement's verification class.** Its whole
@@ -102,15 +102,26 @@ than asserted.
 | AC-1 | **Clean-checkout runnability.** On a host with only Node ≥ 24 and pnpm on `PATH`, the suite and the gate run and pass; `run.sh`/`test.sh` contain no absolute machine path (asserted, not reviewed); `NODE_BIN`/`PNPM_BIN` still select a runtime when set. | Delivered by PR #6 (`scripts/lib/tooling.ts`, `TOOL-002`), which this branch is based on. The CI run is the strongest available form of the claim: a GitHub runner has no `DSH_RUNTIME_ROOT` and no developer directory, and the `test` job runs the suite **through `./test.sh`** there. |
 | AC-2 | **CI enforcement.** `.github/workflows/` gains a job triggered on `pull_request` and `push` to `main` that installs with the pinned pnpm and Node ≥ 24 and runs typecheck, build, `pnpm test` and `pnpm verify:e2e`; the adding PR shows a green run at its own head SHA. | `.github/workflows/ci.yml`; `tests/ci-workflow.test.ts` asserts the triggers, the four commands, the Node floor and the package-manager pin. Green run URL in §7. |
 | AC-3 | **Falsification.** A probe that breaks a citation turns the CI job red; the broken commit and the failing run URL are recorded in the PR body, then reverted. | §7 records the probe commit, the failing run URL, the exact violation, and the revert commit. |
-| AC-4 | **No unexecuted sole evidence.** `SIM-003`'s only citation is executed by the workflow. | The `e2e` job runs `scripts/verify-e2e.ts`, the gate's `citationSources` entry that carries the `// SIM-003` comment. `tests/ci-workflow.test.ts` mechanises the rule: any citation source outside the suite that carries a `// ID` comment and is not executed by the workflow fails the suite. |
+| AC-4 | **No unexecuted sole evidence.** `SIM-003`'s only citation is executed by the workflow. | The `e2e` job runs `scripts/verify-e2e.ts`, the gate's `citationSources` entry that carries the `// SIM-003` comment. `tests/ci-workflow.test.ts` mechanises the rule: any citation source outside the suite that carries a `// ID` comment and is reached by no executing step fails the suite. A step is executing only when its job and the step itself are not disabled by a statically false `if:`; `if: ${{ false }}` on the step and `if: false` on the job are both refused (§7.3). |
 | AC-5 | **Honest bookkeeping.** The change records which baseline statements it supersedes, and leaves §10's "prose counts match the index" declared manual. | §6; `requirements-baseline/README.md` limitation 3 and `requirements-baseline/spec.md` §9/§10 edited. §10's prose-counts row is untouched. The counts this change moves are reconciled through `TOOL-003` (D6). |
 | AC-6 | **Reproducible results.** The PR body cites the workflow run URL for the same head SHA it claims, not only local output. | PR body; §7. |
 
-**Status at this revision.** The code for every criterion is in place, but the
-run-sourced half of AC-2, AC-3 and AC-6 is **not demonstrated**: GitHub Actions
-cannot start a job on this account (billing lock, §7.1). Those three criteria are
-blocked on a human action, not on work in this branch. AC-1, AC-4 and AC-5 are
-demonstrated as described.
+**Status at this revision.** Every criterion is demonstrated, and the run-sourced
+half is recorded in §7 against actual runs rather than local output. AC-1, AC-2,
+AC-4 and AC-5 are demonstrated as described. AC-3 is demonstrated by a probe commit
+that turned the `test` job red on a real run (§7.3) and was then reverted; the
+red-to-green pair on the same workflow is the strongest form the criterion can
+take. AC-6 is satisfied by the pull request body, which cites the green run URL and
+the SHA it belongs to.
+
+This reverses the previous revision's position, and the reversal is the point. At
+`14ad34b` GitHub Actions could not start a job on this account — the annotation was
+*"The job was not started because your account is locked due to a billing issue."*
+That is why the first revision recorded AC-2, AC-3 and AC-6 as not demonstrated.
+The lock was cleared by the operator before the reviewed head commit ran, so run
+[38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270)
+executed all four jobs to completion at `1077aeca`. The blocker is history; the
+record now says so.
 
 ---
 
@@ -122,12 +133,21 @@ a red end-to-end run. One job per check means each result is visible on its own,
 which is what AC-3 needs to be legible. Cost: four dependency installs, mitigated
 by caching the pnpm store against `pnpm-lock.yaml`.
 
-**D2 — Node `24.x`, the declared floor, not the development runtime.** The host
-runs Node 26; `package.json` declares `engines.node >= 24` and `@types/node` is 26.
+**D2 — Node `24`, the declared floor, not the development runtime.** The host runs
+Node 26; `package.json` declares `engines.node >= 24` and `@types/node` is 26.
 Pinning the floor in CI means a break on the oldest supported runtime is caught
 rather than discovered by whoever installs Node 24 next. `@types/node` being newer
 is a compile-time-only difference here: `tsc` reads `node_modules`, not the
 runtime.
+
+The pin names the major alone — `node-version: '24'`, not `'24.x'` — because
+`'24.x'` re-resolves on every run and would jump the moment the `ubuntu-latest`
+label migrates to a new Ubuntu release, adding variance to the very job this change
+is judged by. The major is the least specific value that cannot drift *within* a
+major: `setup-node` resolves it from the runner's tool cache, and a Node 24 patch
+release is not a supported-version change. `runtimeProblems` asserts every job
+names the same major, at or above `engines.node`, so the hold is checked rather
+than remembered.
 
 **D3 — `corepack enable` rather than a package-manager action.** `package.json`
 already pins `packageManager: pnpm@11.7.0`. corepack reads that field, so the
@@ -160,10 +180,13 @@ deliberate:
 - Re-homing changes the requirement's citation source and therefore its declared
   test count in `traceability.yaml`, disturbing counts that PR #6 is already
   moving for `TOOL-001`/`TOOL-002`.
-- The rule is mechanised instead: if the `e2e` step is ever removed from the
-  workflow, `tests/ci-workflow.test.ts` fails. That is a stronger guarantee than a
+- The rule is mechanised instead: if the `e2e` job, or the step that runs
+  `pnpm verify:e2e`, is ever removed **or disabled by an `if:` that is statically
+  false**, `tests/ci-workflow.test.ts` fails. That is a stronger guarantee than a
   one-off relocation, because it holds for every future citation source, not just
-  this one.
+  this one. Review remediation tightened the rule to the second half of that
+  sentence: it originally matched `run:` text alone, so a disabled step still
+  counted as executed (§7.3).
 
 This is the one place this specification departs from the discovery
 recommendation. It is recorded here rather than silently chosen, and a reviewer
@@ -229,54 +252,76 @@ change records the dependency rather than duplicating the fix.
 
 ---
 
-## 7. Evidence, and the CI blocker
+## 7. Evidence
 
-### 7.1 The blocker: GitHub Actions cannot start on this account
+### 7.1 The green run: all four jobs at the reviewed head SHA
 
-The workflow is accepted and the run is created — GitHub resolved it into all four
-jobs, `typecheck`, `build`, `test` and `e2e`, which is evidence the file parses and
-that the jobs are wired as designed. **No job starts**, and the annotation on every
-one of them is:
+Run [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270)
+executed **all four jobs to completion** against head
+`1077aeca8b50e4ad2359a30f5a0ba6ab1458a965`. The run was created at 17:53:10Z and
+its jobs started at 18:07:03Z:
 
-> The job was not started because your account is locked due to a billing issue.
+| Job | Result | Started | Completed |
+|---|---|---|---|
+| `test` | success | 18:07:03Z | 18:07:34Z |
+| `typecheck` | success | 18:07:04Z | 18:07:19Z |
+| `build` | success | 18:07:04Z | 18:07:18Z |
+| `e2e` | success | 18:07:04Z | 18:07:22Z |
 
-Run: https://github.com/dharmeshprataps/cataloging/actions/runs/38610193975
+`gh pr checks 7` reports `build`, `e2e`, `test` and `typecheck` as `pass` for that
+SHA, and the job API shows every step executed through "Complete job". This is
+AC-2's green run at the adding pull request's own head SHA, and it is also AC-1's
+strongest available demonstration: the runner has no `DSH_RUNTIME_ROOT` and no
+developer directory, and the `test` job runs the suite through `./test.sh` there.
 
-This is account-wide and predates this change. The repository's only other
-workflow, `agent-policy.yml`, has failed the same way on every pull request since
-before this branch existed — for example run
-https://github.com/dharmeshprataps/cataloging/actions/runs/38608107318 on PR #3,
-which was merged while its own policy check could not run. No workflow in this
-repository has ever executed.
+### 7.1a The billing lock, and why it is no longer a blocker
 
-**Consequences, stated rather than worked around:**
+An earlier run at `14ad34b`
+([38610193975](https://github.com/dharmeshprataps/cataloging/actions/runs/38610193975))
+failed 17:51:19Z → 17:51:23Z with **no job started**, annotated *"The job was not
+started because your account is locked due to a billing issue."* That is the run
+the first revision of this section was written against, and it is why AC-2, AC-3
+and AC-6 were recorded as not demonstrated.
 
-| Criterion | State |
+The lock was cleared between that push and the head commit's run. The claim the
+first revision drew from it — "no workflow in this repository has ever executed" —
+was true only until 18:07:03Z on 2026-10-14 and is deleted. Clearing an account
+lock is a human action; no agent attempted it, and the operator did not need to
+act on this change's behalf for the head commit's run.
+
+| Criterion | State at this revision |
 |---|---|
-| AC-2, green run at the adding PR's head SHA | **Not satisfied.** Blocked by the billing lock. |
-| AC-3, failing workflow run URL for the probe | **Not satisfied.** The probe's effect is recorded locally below; a run URL needs Actions to start. |
-| AC-6, the PR body cites a run URL for its head SHA | **Not satisfied.** The PR body records the blocker instead. |
+| AC-2, green run at the adding PR's head SHA | **Satisfied** by run [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270), green at `1077aeca` — all four jobs executed. |
+| AC-3, failing workflow run URL for the probe | **Satisfied** by run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202) at `abc35e8`, reverted by `ce2ac30`; see §7.3. |
+| AC-6, the PR body cites a run URL for its head SHA | **Satisfied** by the pull request body, which cites both run URLs against the SHA each belongs to. |
 
-Clearing the lock is a human action on the account; an agent must not attempt it.
-Once Actions can start, the probe must be pushed as a commit and its red run
-recorded, and this section replaced with the run URLs.
-
-### 7.2 Local verification at `14ad34b`
+### 7.2 Local verification at this revision
 
 ```
 typecheck    tsc --noEmit -p tsconfig.check.json   clean
 build        tsc -p tsconfig.json                  ok
-test         vitest 15 files, 256 tests pass; gate RESULT: PASS
+test         vitest 15 files, 259 tests pass; gate RESULT: PASS
              (0 warning(s)) — 159 requirements, 152 verified,
              4 unverified, 3 n/a
 verify:e2e   all checks pass (real HTTP, faked boundaries)
 ```
 
-### 7.3 Falsification (AC-3), run locally
+The test count rose from the 256 recorded at `14ad34b` to 259 because review
+remediation adds three falsification cases to `tests/ci-workflow.test.ts` — a
+citation reached only through a step disabled with `if: ${{ false }}`, a required
+job disabled with `if: false`, and a computed condition that must be left alone.
+`TOOL-003`'s declaration in `traceability.yaml` moves with them, 14 citations to
+17, so the gate's "declared test citations match the tests that cite them" rule
+stays satisfied. The requirement counts are unchanged: 159 requirements, 152
+verified, 4 unverified, 3 n/a, read from `pnpm spec:status`.
 
-Removing the `// SIM-003` comment from `scripts/verify-e2e.ts` while leaving the
-index claiming `verified` — the exact false-claim failure mode the gate exists to
-catch, and the probe `tests/spec-gate.test.ts` uses in its own fixture — produces:
+### 7.3 Falsification (AC-3), as a pushed probe with a real red run
+
+The criterion asks for a broken commit and a failing run URL, so the probe is
+pushed rather than run locally. No `// SIM-003` citation, no `SIM-003` evidence, and
+the index still claiming `verified` — the exact false-claim failure mode the gate
+exists to catch. Removing the comment produces three gate violations, each naming
+`SIM-003`:
 
 ```
 [FAIL] every implemented requirement is covered by at least one test (1)
@@ -288,13 +333,54 @@ catch, and the probe `tests/spec-gate.test.ts` uses in its own fixture — produ
 RESULT: FAIL — 3 error(s)
 ```
 
-`pnpm test` also fails, because `tests/spec-gate.test.ts` has two tests that assert
-the real tree passes. The comment was then restored; the tree is clean and the gate
-returns to PASS. This is also the concrete reason for D5: moving that citation would
-have required editing those two tests.
+The `test` job runs `pnpm test`, which is `./test.sh run && tsx scripts/spec-status.ts`,
+so the gate's failure fails that job: the probe turns the workflow red for the
+citation reason, not an environmental one. The comment is restored immediately
+afterwards, so the pair is a red-to-green sequence on the same workflow — the
+strongest form AC-3 can take. This is also the concrete reason for D5: moving the
+citation would have required editing the two `tests/spec-gate.test.ts` tests that use
+it as their own falsification fixture.
 
-The probe was not pushed as a commit. A pushed probe would produce a red run for
-the billing reason rather than for the citation, which is the opposite of evidence.
+| Step | Revision | CI run |
+|---|---|---|
+| Probe: `// SIM-003` removed from `scripts/verify-e2e.ts` | `abc35e8` | [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202) — `test` **failure**; `typecheck`, `build` and `e2e` success |
+| Revert of the probe | `ce2ac30` | Recorded in §7.5 |
+| Green run at the reviewed head, before the probe | `1077aeca` | [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270) — all four jobs green |
+
+Run `38613491202`'s `test` job failed with exactly the three errors quoted above and
+`pnpm spec:status` exited 1. The other three jobs stayed green, which is the point of
+D1's one-job-per-check design: the failure is attributable to the citation and to
+nothing else.
+
+### 7.4 The citation guard, corrected
+
+Independent review at `1077aeca` found that the guard named
+`unexecutedCitationSources` did not test what its name claims. It string-matched
+`run:` lines, so a step that is written down but never executes still counted as
+executed — the same class of failure this change exists to close, one level up. The
+reviewer's reproduction: with `if: ${{ false }}` on the `pnpm verify:e2e` step, and
+again with `if: ${{ false }}` on the whole `e2e` job, the guard still returned no
+problems.
+
+The guard now reads each job's own `if:` and each step's own `if:` and treats a
+citation source as executed only when it is reached by a step in a job whose
+effective condition is not statically false. Both spellings of a literal are
+recognised — `if: false` and `if: ${{ false }}`. A condition the expression language
+computes from context is deliberately left alone: a static reader cannot decide it,
+and guessing would report a working workflow as broken. That residual gap is real
+and is stated here rather than implied by the function's name; closing it properly
+needs a condition evaluator, which is out of scope for this change (`scripts/verify-spec.ts`
+rules are explicitly out of scope in §2). What is closed is the case review
+reproduced, and `missingChecks` now also reports a required job disabled by
+`if: false` instead of silently accepting it.
+
+### 7.5 The green run for the final revision
+
+The probe, its revert, and the review fixes are validated by the run at the
+remediation head. That run is recorded here once the push completes, because the
+run URL cannot exist before the push does. This is the last piece of evidence the
+change owes, and it is a consequence of choosing a red-to-green pair — the same
+four jobs, on the same workflow, at the revision that removes the probe.
 
 ---
 
@@ -307,8 +393,9 @@ the billing reason rather than for the citation, which is the opposite of eviden
 | It uses the Node floor and the package-manager pin `package.json` already declares, with no second version literal | `tests/ci-workflow.test.ts` — `runtimeProblems`. |
 | It is read-only and references no secret or developer `.env` | `tests/ci-workflow.test.ts` — `permissionProblems`. |
 | No citation source outside the suite carries evidence no CI step executes | `tests/ci-workflow.test.ts` — `unexecutedCitationSources`, over the gate's own `citationSources`. |
+| A citation reached only by a statically disabled step or job is not counted as executed | `tests/ci-workflow.test.ts` — the `if: ${{ false }}` step and `if: false` job cases; both were confirmed red before the fix, and are reproduced in §7.4. |
 | Each of those rules fails when violated | `tests/ci-workflow.test.ts` — one falsification case per rule, mutating the real workflow text. |
-| A broken citation turns CI red | The probe in §7, run by the workflow itself. |
+| A broken citation turns CI red | Run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202), §7.3, then reverted. |
 | The suite and the gate still pass, and the baseline counts still reconcile | `pnpm test` locally and in CI; `pnpm spec:status` remains the authority for the counts. |
 
 ---

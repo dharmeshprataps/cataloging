@@ -43,11 +43,6 @@ function readWorkflow(): string {
   return fs.readFileSync(workflowPath, 'utf8');
 }
 
-/** Every command the workflow actually runs, in file order. */
-function runCommands(workflowText: string): string[] {
-  return [...workflowText.matchAll(/^\s*-?\s*run:\s*(.+)$/gm)].map((match) => match[1]!.trim());
-}
-
 /**
  * The text of a top-level block: the key's own line plus every following line
  * indented beneath it, stopping at the next line that starts in column zero.
@@ -82,12 +77,123 @@ function jobBlocks(workflowText: string): Record<string, string> {
   return blocks;
 }
 
+/** A `- name:` entry — a job under `jobs:`, or a step under `steps:`. */
+type Block = { name: string; fields: Record<string, string>; children: Block[] };
+
 /**
- * Commands plus the body of every `pnpm <script>` they invoke, transitively, so a
- * check that reaches a file through a script is recognised as running it.
+ * The `key: value` lines of a block, ignoring keys that are really just part of
+ * a nested block's path. Two keys are never repeated in this workflow, which is
+ * asserted by `missingChecks` reporting a job that declares two `if:` lines.
  */
-function expandScripts(commands: string[], scripts: Record<string, string>): string {
-  const parts = [...commands];
+function blockFields(body: string): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const line of body.split('\n')) {
+    if (/^\s*-/.test(line)) continue;
+    const match = /^[ \t]*([A-Za-z][\w-]*):[ \t]*(.*)$/.exec(line);
+    if (match) fields[match[1]!] = match[2]!.trim();
+  }
+  return fields;
+}
+
+/** A `- ` sequence at exactly `indent` spaces, each entry taking its nested lines. */
+function blocksAt(lines: string[], indent: number): Block[] {
+  const blocks: Block[] = [];
+  let entry: { name: string; body: string[] } | undefined;
+  for (const line of lines) {
+    const header = new RegExp(`^ {${indent}}- (.*)$`).exec(line);
+    if (header) {
+      if (entry) blocks.push({ name: entry.name, ...splitEntry(entry.body) });
+      const label = /^name:\s*(.+)$/.exec(header[1]!.trim());
+      entry = { name: label ? label[1]!.trim().replace(/^['"]|['"]$/g, '') : header[1]!.trim(), body: [] };
+      continue;
+    }
+    if (entry) entry.body.push(line);
+  }
+  if (entry) blocks.push({ name: entry.name, ...splitEntry(entry.body) });
+  return blocks;
+}
+
+/** A block's own properties, plus any deeper `- ` sequence as its children. */
+function splitEntry(body: string[]): { fields: Record<string, string>; children: Block[] } {
+  const own: string[] = [];
+  const nested: string[] = [];
+  let inChildren = false;
+  for (const line of body) {
+    if (/^ {6}- /.test(line)) inChildren = true;
+    (inChildren ? nested : own).push(line);
+  }
+  return { fields: blockFields(own.join('\n')), children: inChildren ? blocksAt(nested, 6) : [] };
+}
+
+/** One job: its id, its own condition, its steps, and the commands those run. */
+type Job = { id: string; condition: string | undefined; steps: { condition: string | undefined; run: string }[] };
+
+/** Every job, with the condition and `run:` commands of each of its steps. */
+function workflowJobs(workflowText: string): Job[] {
+  const jobs = topLevelBlock(workflowText, 'jobs');
+  const lines = jobs.split('\n').slice(1);
+  const entries: { id: string; body: string[] }[] = [];
+  let entry: { id: string; body: string[] } | undefined;
+  for (const line of lines) {
+    const header = /^ {2}([A-Za-z][\w-]*):\s*$/.exec(line);
+    if (header) {
+      if (entry) entries.push(entry);
+      entry = { id: header[1]!, body: [] };
+      continue;
+    }
+    if (entry) entry.body.push(line);
+  }
+  if (entry) entries.push(entry);
+
+  return entries.map(({ id, body }) => {
+    const own: string[] = [];
+    const stepLines: string[] = [];
+    let inSteps = false;
+    for (const line of body) {
+      if (/^ {4}steps:\s*$/.test(line)) inSteps = true;
+      (inSteps ? stepLines : own).push(line);
+    }
+    return {
+      id,
+      condition: blockFields(own.join('\n'))['if'],
+      steps: blocksAt(stepLines, 6).map((step) => ({
+        condition: step.fields['if'],
+        run: step.fields['run'] ?? '',
+      })),
+    };
+  });
+}
+
+/**
+ * Whether a condition disables its job or step however the workflow is run.
+ *
+ * Both spellings GitHub accepts for a literal are recognised — `if: false` and
+ * `if: ${{ false }}` — plus the literal `0`. Anything the expression language
+ * computes from context (a matrix value, `github.event`, a comparison) is
+ * deliberately left alone: a static reader cannot decide it, and guessing would
+ * report a working workflow as broken. The gap that leaves is recorded in §7.4 of
+ * the change spec.
+ */
+function staticallyDisabled(condition: string | undefined): boolean {
+  if (condition === undefined) return false;
+  const expression = /^\$\{\{\s*(.*?)\s*\}\}$/.exec(condition.trim());
+  const literal = (expression ? expression[1]! : condition).trim().replace(/^['"]|['"]$/g, '');
+  return literal === 'false' || literal === '0';
+}
+
+/**
+ * The commands plus the body of every `pnpm <script>` they invoke, transitively,
+ * so a check that reaches a file through a script is recognised as running it.
+ * Steps behind a statically false condition contribute nothing: a command that is
+ * written down but never executes has not run.
+ */
+function executedCommands(job: Job, scripts: Record<string, string>): string {
+  const parts: string[] = [];
+  if (!staticallyDisabled(job.condition)) {
+    for (const step of job.steps) {
+      if (!staticallyDisabled(step.condition) && step.run !== '') parts.push(step.run);
+    }
+  }
   const seen = new Set<string>();
   for (let i = 0; i < parts.length; i += 1) {
     for (const match of parts[i]!.matchAll(/\bpnpm(?:\s+run)?\s+([\w:.-]+)/g)) {
@@ -108,17 +214,27 @@ const REQUIRED_CHECKS: { script: string; job: string }[] = [
   { script: 'pnpm verify:e2e', job: 'e2e' },
 ];
 
-/** Every required check missing from the workflow, or run by the wrong job. */
-function missingChecks(workflowText: string): string[] {
-  const jobs = jobBlocks(workflowText);
+/**
+ * Every required check missing from the workflow, disabled by a condition, or
+ * run by the wrong job. A job guarded by `if: false` is reported as absent: it
+ * exists in the file, but no run reaches it.
+ */
+function missingChecks(workflowText: string, scripts: Record<string, string>): string[] {
+  const jobs = new Map(workflowJobs(workflowText).map((job) => [job.id, job]));
   const problems: string[] = [];
   for (const { script, job } of REQUIRED_CHECKS) {
-    const block = jobs[job];
-    if (block === undefined) {
+    const found = jobs.get(job);
+    if (found === undefined) {
       problems.push(`no \`${job}\` job`);
       continue;
     }
-    if (!runCommands(block).includes(script)) problems.push(`${job} does not run \`${script}\``);
+    if (staticallyDisabled(found.condition)) {
+      problems.push(`${job} job is disabled by \`if: ${found.condition}\``);
+      continue;
+    }
+    if (!executedCommands(found, scripts).includes(script)) {
+      problems.push(`${job} does not run \`${script}\``);
+    }
   }
   return problems;
 }
@@ -184,6 +300,12 @@ function permissionProblems(workflowText: string): string[] {
  *
  * This is the mechanised form of acceptance check 4: a requirement whose only
  * evidence is a comment in a script nobody runs is not verified by anything.
+ *
+ * "Executes" means reached by a step in a job that no `if:` statically disables.
+ * Matching the `run:` text alone was not enough: a step behind `if: ${{ false }}`,
+ * or an `e2e` job behind one, still matched, so a guard named
+ * `unexecutedCitationSources` returned nothing for a citation nothing ran. That
+ * is the same failure this change exists to close, one level up.
  */
 function unexecutedCitationSources(
   workflowText: string,
@@ -191,7 +313,9 @@ function unexecutedCitationSources(
   root: string,
   scripts: Record<string, string>,
 ): string[] {
-  const executed = expandScripts(runCommands(workflowText), scripts);
+  const executed = workflowJobs(workflowText)
+    .map((job) => executedCommands(job, scripts))
+    .join('\n');
   const problems: string[] = [];
   for (const source of sources) {
     if (!fs.existsSync(source)) continue;
@@ -212,7 +336,7 @@ describe('the CI workflow', () => {
   });
 
   it('TOOL-003 runs the suite, the gate, the build and the end-to-end checks', () => {
-    expect(missingChecks(readWorkflow())).toEqual([]);
+    expect(missingChecks(readWorkflow(), packageJson.scripts ?? {})).toEqual([]);
   });
 
   it('TOOL-003 runs each check as its own job, so one red job cannot hide another', () => {
@@ -246,12 +370,14 @@ describe('the CI workflow rules fail when violated', () => {
       .join('\n');
 
   it('TOOL-003 reports a check whose step was removed', () => {
-    expect(missingChecks(drop('pnpm build'))).toContain('build does not run `pnpm build`');
+    expect(missingChecks(drop('pnpm build'), packageJson.scripts ?? {})).toContain(
+      'build does not run `pnpm build`',
+    );
   });
 
   it('TOOL-003 reports a dropped job', () => {
     const withoutE2e = readWorkflow().replace(/^ {2}e2e:\n(?:.*\n)*?(?=^ {2}\w|^$)/m, '');
-    expect(missingChecks(withoutE2e)).toContain('no `e2e` job');
+    expect(missingChecks(withoutE2e, packageJson.scripts ?? {})).toContain('no `e2e` job');
   });
 
   it('TOOL-003 reports a trigger that no longer covers push to main', () => {
@@ -261,7 +387,7 @@ describe('the CI workflow rules fail when violated', () => {
   });
 
   it('TOOL-003 reports a Node version below the engine requirement', () => {
-    const probe = readWorkflow().replace(/node-version: '24\.x'/g, "node-version: '20.x'");
+    const probe = readWorkflow().replace(/node-version: '24'/g, "node-version: '20.x'");
     expect(runtimeProblems(probe, packageJson).join('\n')).toContain('below engines.node');
   });
 
@@ -284,5 +410,35 @@ describe('the CI workflow rules fail when violated', () => {
     expect(unexecutedCitationSources(probe, citationSources, repoRoot, packageJson.scripts ?? [])).toEqual([
       'scripts/verify-e2e.ts carries a citation but no CI step runs it',
     ]);
+  });
+
+  it('TOOL-003 reports a citation source reached only by a step disabled with if:false', () => {
+    const probe = readWorkflow().replace(
+      '      - name: End-to-end checks\n        run: pnpm verify:e2e',
+      '      - name: End-to-end checks\n        if: ${{ false }}\n        run: pnpm verify:e2e',
+    );
+    expect(probe).not.toBe(readWorkflow());
+    expect(unexecutedCitationSources(probe, citationSources, repoRoot, packageJson.scripts ?? [])).toEqual([
+      'scripts/verify-e2e.ts carries a citation but no CI step runs it',
+    ]);
+  });
+
+  it('TOOL-003 reports a required job disabled with if:false', () => {
+    const probe = readWorkflow().replace('  e2e:\n    name: e2e\n', '  e2e:\n    name: e2e\n    if: false\n');
+    expect(probe).not.toBe(readWorkflow());
+    expect(missingChecks(probe, packageJson.scripts ?? {})).toContain('e2e job is disabled by `if: false`');
+    expect(unexecutedCitationSources(probe, citationSources, repoRoot, packageJson.scripts ?? [])).toEqual([
+      'scripts/verify-e2e.ts carries a citation but no CI step runs it',
+    ]);
+  });
+
+  it('TOOL-003 leaves a condition it cannot decide alone, rather than calling it disabled', () => {
+    const probe = readWorkflow().replace(
+      '  e2e:\n    name: e2e\n',
+      "  e2e:\n    name: e2e\n    if: github.event_name == 'workflow_dispatch'\n",
+    );
+    expect(probe).not.toBe(readWorkflow());
+    expect(missingChecks(probe, packageJson.scripts ?? {})).toEqual([]);
+    expect(unexecutedCitationSources(probe, citationSources, repoRoot, packageJson.scripts ?? [])).toEqual([]);
   });
 });

@@ -46,7 +46,7 @@ jobs:
       - name: Use the Node major package.json requires
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
+          node-version: '24'
       - name: Enable the package manager pinned in package.json
         run: corepack enable
       - name: Locate the pnpm store
@@ -71,7 +71,7 @@ jobs:
       - name: Use the Node major package.json requires
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
+          node-version: '24'
       - name: Enable the package manager pinned in package.json
         run: corepack enable
       - name: Locate the pnpm store
@@ -96,7 +96,7 @@ jobs:
       - name: Use the Node major package.json requires
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
+          node-version: '24'
       - name: Enable the package manager pinned in package.json
         run: corepack enable
       - name: Locate the pnpm store
@@ -123,7 +123,7 @@ jobs:
       - name: Use the Node major package.json requires
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
+          node-version: '24'
       - name: Enable the package manager pinned in package.json
         run: corepack enable
       - name: Locate the pnpm store

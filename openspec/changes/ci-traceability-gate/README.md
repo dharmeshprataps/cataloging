@@ -24,8 +24,8 @@ verification class.
 
 | Area | What it does |
 |---|---|
-| [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) | Runs on `pull_request`, on `push` to `main`, and on `workflow_dispatch`. Four independent jobs — `typecheck`, `build`, `test`, `e2e` — each installing with the package manager `package.json` pins, on Node `24.x`. `test` runs `pnpm test`, which is vitest **and** the `spec:status` gate; `e2e` runs `pnpm verify:e2e`, the citation source for `SIM-003`. |
-| [`tests/ci-workflow.test.ts`](../../../tests/ci-workflow.test.ts) | Asserts the triggers, the four checks and their jobs, the Node floor, the single package-manager pin, the read-only/no-secret posture, and that no citation source outside the suite carries evidence no CI step executes. Each rule has a falsification case that mutates the real workflow. |
+| [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) | Runs on `pull_request`, on `push` to `main`, and on `workflow_dispatch`. Four independent jobs — `typecheck`, `build`, `test`, `e2e` — each installing with the package manager `package.json` pins, on Node `24`. `test` runs `pnpm test`, which is vitest **and** the `spec:status` gate; `e2e` runs `pnpm verify:e2e`, the citation source for `SIM-003`. |
+| [`tests/ci-workflow.test.ts`](../../../tests/ci-workflow.test.ts) | Asserts the triggers, the four checks and their jobs, the Node floor, the single package-manager pin, the read-only/no-secret posture, and that no citation source outside the suite is reached only by a step that never executes — a step or job disabled by a statically false `if:` does not count. Each rule has a falsification case that mutates the real workflow. |
 | `requirements-baseline/README.md`, `requirements-baseline/spec.md`, root `README.md` | Record the supersession, so the baseline stops claiming a limitation this change removes. |
 | `requirements-baseline/requirements.md`, `traceability.yaml`, count prose | Gain `TOOL-003` — the CI behaviour the new tests cite. The baseline's gate rejects a test that cites no requirement, so the requirement had to be added; counts move 158/151 → 159/152 in step. See §4 D6 and §6 of [`spec.md`](spec.md). |
 
@@ -46,10 +46,12 @@ This branch is based on PR #6's head and its pull request targets that branch.
 2. Read `.github/workflows/ci.yml` and check it against the four required checks.
 3. Run `./run.sh pnpm test`; `tests/ci-workflow.test.ts` should be the only new
    file in the results.
-4. Check the evidence in §7. **The workflow's own runs are blocked**: GitHub cannot
-   start a job on this account ("locked due to a billing issue"), which also
-   affects the pre-existing `agent-policy.yml`. §7 records that limitation, the
-   local verification, and the locally-run falsification.
+4. Check the evidence in §7. **The workflow's runs are real**: run
+   [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270)
+   executed all four jobs green at the reviewed head `1077aeca`, and the AC-3 probe
+   run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202)
+   turned `test` red at `abc35e8` before being reverted by `ce2ac30`. §7.1a records
+   the earlier billing lock, which is why the first revision of §7 said otherwise.
 5. Check §6 against the baseline's own text: limitation 3 and §9/§10 should read
    as superseded, and §10's "prose counts match the index" row must still be
    declared manual.
