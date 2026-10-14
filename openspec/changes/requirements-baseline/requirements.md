@@ -27,12 +27,15 @@ Verification: `verified` (a test fails if the behaviour breaks) · `unverified`
 
 ## Coverage
 
-**158 requirements** — 154 `implemented`, 1 `partial`, 2 `deferred`,
-1 `not_implemented`. **151 verified**, **4 `unverified`**, **3 `n/a`**.
+**159 requirements** — 155 `implemented`, 1 `partial`, 2 `deferred`,
+1 `not_implemented`. **152 verified**, **4 `unverified`**, **3 `n/a`**.
 
-The catalogue held 156 when the baseline was approved; `TOOL-001` and `TOOL-002`
-were added by this change when its own first implementation failed them. They
-describe the gate's artifact scan and `run.sh`'s runtime selection, both
+The catalogue held 156 when the baseline was approved. `TOOL-001` and `TOOL-002`
+were added by this change when its own first implementation failed them: the
+gate's artifact scan, and `run.sh`'s runtime selection. `TOOL-003` was added by
+the follow-on `ci-traceability-gate` change, which runs the suite, the gate, the
+build and the end-to-end checks in CI — the gate requires every test to cite a
+requirement, so that workflow's tests could not exist without it. All three are
 implemented and tested in this tree.
 
 The `unverified` set is `GEN-001`, `GEN-008`, `GEN-009`, `SIM-008`: each is
@@ -1078,3 +1081,23 @@ fixes it.
 **Acceptance:** with a Node on `PATH` and no bundled runtime, `./run.sh which`,
 `./run.sh tsx`, `./test.sh` and `./run.sh pnpm <script>` all work; a test asserts
 that no machine-absolute path literal appears in either script.
+
+### TOOL-003 — The suite, the gate, the build and the end-to-end checks run in CI
+
+`.github/workflows/ci.yml` runs on every pull request, on every push to `main`,
+and on `workflow_dispatch`. Four independent jobs — `typecheck`, `build`, `test`
+and `e2e` — install with the package manager `package.json` pins (`corepack
+enable` reads `packageManager`) on Node `24.x`, the floor `engines.node` declares,
+so a break on the oldest supported runtime is caught rather than assumed. `test`
+runs `pnpm test`, which is vitest **and** the `spec:status` gate; `e2e` runs
+`pnpm verify:e2e`, the gate's `citationSources` entry and therefore the only
+evidence behind `SIM-003`, so no requirement's sole evidence is a check no
+automation runs. The workflow declares `permissions: contents: read`, references
+no repository secret, and reads no developer `.env`.
+
+**Acceptance:** `tests/ci-workflow.test.ts` asserts the triggers, the four checks
+and the job that owns each, the Node floor, the single package-manager pin, the
+read-only and secret-free posture, and that every citation source outside the
+suite is executed by the workflow. Each rule has a falsification case that mutates
+the real workflow text; removing the `e2e` step makes the suite fail. Limitation 3
+of the change README records the statement this supersedes.
