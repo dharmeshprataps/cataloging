@@ -293,7 +293,7 @@ act on this change's behalf for the head commit's run.
 |---|---|
 | AC-2, green run at the adding PR's head SHA | **Satisfied** by run [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270), green at `1077aeca` — all four jobs executed. |
 | AC-3, failing workflow run URL for the probe | **Satisfied** by run [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202) at `abc35e8`, reverted by `ce2ac30`; see §7.3. |
-| AC-6, the PR body cites a run URL for its head SHA | **Satisfied** by the pull request body, which cites both run URLs against the SHA each belongs to. |
+| AC-6, the PR body cites a run URL for its head SHA | **Satisfied** by the pull request body, which cites the green run at each revision — `1077aeca`, `abc35e8` and `93c06a0` — against the SHA each belongs to. |
 
 ### 7.2 Local verification at this revision
 
@@ -344,8 +344,9 @@ it as their own falsification fixture.
 | Step | Revision | CI run |
 |---|---|---|
 | Probe: `// SIM-003` removed from `scripts/verify-e2e.ts` | `abc35e8` | [38613491202](https://github.com/dharmeshprataps/cataloging/actions/runs/38613491202) — `test` **failure**; `typecheck`, `build` and `e2e` success |
-| Revert of the probe | `ce2ac30` | Recorded in §7.5 |
+| Revert of the probe | `ce2ac30` | Green with the review fixes in [38613975075](https://github.com/dharmeshprataps/cataloging/actions/runs/38613975075) |
 | Green run at the reviewed head, before the probe | `1077aeca` | [38610453270](https://github.com/dharmeshprataps/cataloging/actions/runs/38610453270) — all four jobs green |
+| Green run for the final revision | `93c06a0` | [38613975075](https://github.com/dharmeshprataps/cataloging/actions/runs/38613975075) — all four jobs green, §7.5 |
 
 Run `38613491202`'s `test` job failed with exactly the three errors quoted above and
 `pnpm spec:status` exited 1. The other three jobs stayed green, which is the point of
@@ -376,11 +377,13 @@ reproduced, and `missingChecks` now also reports a required job disabled by
 
 ### 7.5 The green run for the final revision
 
-The probe, its revert, and the review fixes are validated by the run at the
-remediation head. That run is recorded here once the push completes, because the
-run URL cannot exist before the push does. This is the last piece of evidence the
-change owes, and it is a consequence of choosing a red-to-green pair — the same
-four jobs, on the same workflow, at the revision that removes the probe.
+The probe, its revert, and the review fixes are validated by run
+[38613975075](https://github.com/dharmeshprataps/cataloging/actions/runs/38613975075),
+which is green at `93c06a0965afcb9dced2a02dbb2c1b1ded49f5eb` with all four jobs —
+`typecheck`, `build`, `test` and `e2e` — concluding `success`. That revision
+contains the revert of the probe and every review fix, so the red-to-green pair is
+complete on the same workflow: `abc35e8` red on the citation (§7.3), `93c06a0`
+green with it restored and the guard corrected.
 
 ---
 
