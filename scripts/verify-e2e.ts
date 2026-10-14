@@ -108,6 +108,7 @@ console.log('\n== 2. simulator UI ==');
 
 console.log('\n== 3. event streaming ==');
 {
+  // SIM-003
   // Needs a real socket: the SSE route owns the connection until the
   // client disconnects, so `inject` (which waits for the response to end) cannot
   // exercise it. AbortController lets us read the first chunk and hang up.
