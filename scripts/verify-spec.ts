@@ -172,6 +172,43 @@ function readIfPresent(file: string): string | undefined {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : undefined;
 }
 
+/**
+ * The metadata-block template itself, relative to the change directory.
+ *
+ * It cannot carry a metadata block: the block it must contain is the example it
+ * teaches, and a reader cannot tell the example from a real header. It is
+ * documentation *about* the standard, not a material document governed by it, so
+ * it is the one file the metadata check skips — explicitly and by name, so the
+ * exemption is reviewable rather than a silent hole in the scan.
+ */
+const TEMPLATE_REL = path.join('templates', 'METADATA_BLOCK.md');
+
+/**
+ * Every `*.md` artifact under a directory, sorted, recursively.
+ *
+ * Material artifacts live at the change root, in `findings/`, in `decisions/`
+ * and in `templates/`, and the next one may live somewhere else. Discovering
+ * them means the metadata rule cannot be satisfied by a document simply not
+ * being listed in this file.
+ */
+export function discoverArtifacts(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  const found: string[] = [];
+  // An explicit walk rather than `readdirSync({ recursive: true })`: the
+  // recursive form's `parentPath` field is Node-version-dependent, and a gate
+  // that changes meaning with the runtime is worse than a few lines of loop.
+  const pending = [dir];
+  while (pending.length > 0) {
+    const current = pending.pop()!;
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) pending.push(full);
+      else if (entry.isFile() && entry.name.endsWith('.md')) found.push(full);
+    }
+  }
+  return found.sort();
+}
+
 /** The value of a `| **Field** | value |` row in a metadata block, or undefined. */
 export function metadataCell(text: string, field: string): string | undefined {
   const pattern = new RegExp(`^\\|\\s*\\*\\*${field}\\*\\*\\s*\\|([^|]*)\\|`, 'm');
@@ -897,12 +934,21 @@ export function runGate(options: GateOptions = {}): GateResult {
   }
 
   const docs = check('every requirement document and artifact carries a metadata block');
-  // Material artifacts that must carry a metadata block. requirements.md holds
-  // normative text and uses headings instead, so it is checked separately.
-  const metadataDocs = [
-    path.join(SPEC_DIR, 'spec.md'),
-    ...findingFiles.map((f) => path.join(FINDINGS_DIR, f)),
-  ];
+  /**
+   * Every markdown artifact under the change directory, discovered rather than
+   * listed.
+   *
+   * This check used to name `spec.md` plus `findings/*.md`, and only those. The
+   * criterion it enforces (`spec.md` AC-5) is "every material document", so the
+   * hand-written list was the whole defect: `PROBLEMS.md`, `requirements.md`, the
+   * change `README.md`, every `decisions/*.md` and the template went uninspected,
+   * and an artifact could be added without a block and still report PASS. A
+   * recursive scan cannot drift that way, and a new artifact is covered the moment
+   * it lands.
+   */
+  const metadataDocs = discoverArtifacts(SPEC_DIR).filter(
+    (doc) => path.relative(SPEC_DIR, doc) !== TEMPLATE_REL,
+  );
   for (const doc of metadataDocs) {
     const text = readIfPresent(doc);
     const rel = path.relative(opts.repoRoot, doc);

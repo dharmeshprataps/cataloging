@@ -1,5 +1,20 @@
 # Requirement catalogue — `requirements-baseline`
 
+| Field | Value |
+|---|---|
+| **ID** | `REQ-CATALOGUE` |
+| **Title** | Normative requirement catalogue for `SPEC-REQ-BASELINE` |
+| **Owner** | Dharmesh Pratap Singh (operator) |
+| **Status** | APPROVED |
+| **Created** | 2026-10-14 |
+| **Last modified** | 2026-10-14 |
+| **Spec** | `spec.md` v1.0 |
+| **Source classification** | OBSERVED |
+| **Confidence** | VERIFIED |
+| **Supersedes** | — |
+| **Superseded by** | — |
+| **Dependencies** | `spec.md`, `traceability.yaml`, `PROBLEMS.md` |
+
 Normative requirement text for [`SPEC`](spec.md). Ids are `<AREA>-<NNN>`,
 permanent, never renumbered or reused.
 
@@ -12,8 +27,13 @@ Verification: `verified` (a test fails if the behaviour breaks) · `unverified`
 
 ## Coverage
 
-**156 requirements** — 152 `implemented`, 1 `partial`, 2 `deferred`,
-1 `not_implemented`. **149 verified**, **4 `unverified`**, **3 `n/a`**.
+**158 requirements** — 154 `implemented`, 1 `partial`, 2 `deferred`,
+1 `not_implemented`. **151 verified**, **4 `unverified`**, **3 `n/a`**.
+
+The catalogue held 156 when the baseline was approved; `TOOL-001` and `TOOL-002`
+were added by this change when its own first implementation failed them. They
+describe the gate's artifact scan and `run.sh`'s runtime selection, both
+implemented and tested in this tree.
 
 The `unverified` set is `GEN-001`, `GEN-008`, `GEN-009`, `SIM-008`: each is
 implemented, and each has a non-skipped asserting test that cites it, but that
@@ -1025,3 +1045,36 @@ Three photos in one turn are one item, not three generations.
 
 **Acceptance:** a three-photo batch produces exactly one acknowledgement and
 requests the brief.
+
+---
+
+# Tooling (`TOOL`)
+
+The two conventions this change must satisfy in any checkout, added when the
+first implementation failed them: the metadata rule covered three artifacts out of
+fifteen, and `run.sh` could not start on a machine other than its author's.
+
+### TOOL-001 — Every material artifact carries a metadata block
+
+The metadata rule (`spec.md` AC-5) is enforced over **every** markdown artifact
+under the change directory, discovered by scanning rather than by a list kept in
+the gate. The only exemption is `templates/METADATA_BLOCK.md`, which is
+documentation *about* the standard and cannot carry a real block without making
+the example indistinguishable from a header.
+
+**Acceptance:** removing the block from any artifact — including one added later,
+in a directory the gate does not name today — fails the
+"carries a metadata block" check.
+
+### TOOL-002 — The toolchain is resolved from the environment, not from a machine
+
+`run.sh` selects its Node runtime from `NODE_BIN`, then a Node ≥ 24 on `PATH` or
+at a standard install prefix, then a bundled runtime **only if it exists**, then
+any Node on `PATH` with a warning. It contains no absolute path outside this
+repository, and neither does `test.sh`. pnpm is resolved from `PNPM_BIN`, the
+bundled runtime, or `PATH`, and a missing pnpm is reported with the command that
+fixes it.
+
+**Acceptance:** with a Node on `PATH` and no bundled runtime, `./run.sh which`,
+`./run.sh tsx`, `./test.sh` and `./run.sh pnpm <script>` all work; a test asserts
+that no machine-absolute path literal appears in either script.

@@ -73,11 +73,19 @@ This change does three things, and the third is why the first two can be trusted
    code, the tests that cite requirement ids, and the infrastructure needed to
    run them.
 
-The third item is deliberate and was approved as part of the baseline. The gate
-requires every `implemented` requirement to be cited by a test **in the same
-tree** that is not skipped and contains an assertion; a citation that points at
-another branch is a pointer, not evidence. That rule cannot be satisfied by a
-gate-only diff, so the suite and the code it exercises ship with it.
+The third item is deliberate and belongs to this change rather than to a
+follow-on; the authorising revision is recorded in §12. The gate requires every
+`implemented` requirement to be cited by a test **in the same tree** that is not
+skipped and contains an assertion; a citation that points at another branch is a
+pointer, not evidence. That rule cannot be satisfied by a gate-only diff, so the
+suite and the code it exercises ship with it.
+
+This change also added two requirements to its own catalogue, `TOOL-001` and
+`TOOL-002` (see [`requirements.md`](requirements.md)): the metadata rule of AC-5
+applies to every artifact rather than to a hand-written list, and the toolchain
+that runs the suite resolves from the environment rather than from one machine.
+Both were added because this change's own first implementation failed them, and
+both are covered in [`tests/tooling.test.ts`](../../../tests/tooling.test.ts).
 
 The implementation is **not new product behaviour** relative to this baseline: it
 is the system the baseline describes, written down. No requirement here is
@@ -159,7 +167,7 @@ Checkable statements. Each is verifiable without reading the code.
 
 ## 5. What is verified, and what is not
 
-**Verified (149 of 156 requirements):** each has at least one automated test that
+**Verified (151 of 158 requirements):** each has at least one automated test that
 fails if the behaviour breaks, with the test citing the requirement id in its
 title. The suite ships in this change (see §9), so the citations resolve to tests
 that run in this tree. Coverage spans the conversation state machine, batching,
@@ -167,7 +175,7 @@ brief confirmation, generation and iteration, media validation, the inbound and
 outbound WhatsApp Cloud API path, the simulator surface, persistence, catalogue
 export, configuration, and the security controls around webhook signatures.
 
-**Unverified (4 of 156), recorded as open problems rather than claims:** each is
+**Unverified (4 of 158), recorded as open problems rather than claims:** each is
 implemented and cited by a test, but the citing test exercises a substitute
 rather than the code the requirement names, so it would still pass if the
 behaviour broke. Full detail in the "Unverified requirements" table in
@@ -180,7 +188,7 @@ behaviour broke. Full detail in the "Unverified requirements" table in
 | `GEN-009` a policy refusal is never retried | `isContentPolicyError` is never executed by any test. |
 | `SIM-008` a non-simulator channel does not serve the UI | The only citing test asserts the configured channel, which holds whether or not the 409 branch exists. |
 
-**Not applicable (3 of 156), recorded as open problems rather than claims:**
+**Not applicable (3 of 158), recorded as open problems rather than claims:**
 
 | Requirement | State | Why it is not implemented |
 |---|---|---|
@@ -275,7 +283,7 @@ because the gate cannot be honest without them:
 | Change ID | Status | Scope |
 |---|---|---|
 | `traceability-gate` | **In this change** | The `AREA-NNN` citation convention, the checker that fails on drift, and its falsification tests (`tests/spec-gate.test.ts`). |
-| `expand-test-coverage` | **In this change** | The suite that demonstrates 149 of 156 requirements, including the previously untested outbound WhatsApp Cloud API path. A gate whose citations point at another branch is not evidence, so the suite lands here. |
+| `expand-test-coverage` | **In this change** | The suite that demonstrates 151 of 158 requirements, including the previously untested outbound WhatsApp Cloud API path. A gate whose citations point at another branch is not evidence, so the suite lands here. |
 | `wire-unwired-capabilities` | Still a follow-on | `WA-009`, `F-001` F3 and F5, and the injectable SDK client that would turn `GEN-001`, `GEN-008`, `GEN-009` and `SIM-008` from `unverified` into genuinely verified. |
 
 One change remains genuinely separate. Absorbing it here would make this pull
@@ -306,6 +314,8 @@ report.
 | Every `verified` requirement is falsifiable in principle | Automated in part: the gate proves a non-skipped asserting test cites it. That a citation actually *supports* its claim is a human judgement, and the four known failures are listed in §5. |
 | Every `deferred`/`not_implemented` requirement links a problem | Automated: `a not_implemented or deferred requirement links a finding`. |
 | Every rule in the gate fails when violated | `tests/spec-gate.test.ts` — one falsification test per rule. |
+| Every material artifact carries a metadata block | Automated: gate check `every requirement document and artifact carries a metadata block`, which scans the change directory recursively; the only exemption is the template. Falsified by removing the block from `PROBLEMS.md` and from a newly added artifact (`TOOL-001`). |
+| The suite runs in a checkout that is not the author's | Automated: `tests/tooling.test.ts` drives the real `./run.sh`, asserts no machine-absolute path appears in `run.sh`/`test.sh`, and exercises runtime selection against stubbed runtimes (`TOOL-002`). |
 | Prose counts match the index | Manual: read `./run.sh pnpm spec:status` and compare against §5, `README.md` and `requirements.md`. Not mechanised. |
 | No document claims behaviour that contradicts the code | Reviewer compares a sample against `src/`. |
 | The specification does not contradict `AGENTS.md` or `openspec/README.md` | Read together. |
@@ -357,5 +367,6 @@ instruction is quoted in the metadata block above.
 says implementation does not begin until a specification carries an explicit
 `APPROVED` marker, so this change must not leave draft until a human confirms
 this amended revision. The state counts in §5 are read from
-`./run.sh pnpm spec:status` at this revision: 149 `verified`, 4 `unverified`,
-3 `n/a`, of 156.
+`./run.sh pnpm spec:status` at this revision: 151 `verified`, 4 `unverified`,
+3 `n/a`, of 158. `TOOL-001` and `TOOL-002` were added by this change when its own
+first implementation failed them; §5's counts follow the gate.
