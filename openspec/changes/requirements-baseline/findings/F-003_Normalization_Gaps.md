@@ -133,7 +133,7 @@ because the wrong hero would be user-visible.
 
 ## Count reconciliation
 
-**At this revision:** 156 requirements — 149 `verified`, 4 `unverified`
+**At this revision:** 159 requirements — 152 `verified`, 4 `unverified`
 (`GEN-001`, `GEN-008`, `GEN-009`, `SIM-008`), 3 `n/a` (`WA-009`, `CONV-008`,
 `SEC-006`). `./run.sh pnpm spec:status` is authoritative for the individual
 statuses and regenerates the list; `PROBLEMS.md` carries the per-requirement

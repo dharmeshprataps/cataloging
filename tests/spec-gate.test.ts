@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { parseYaml } from '../scripts/lib/yaml.js';
 import {
   CHANGE_ID as changeId,
+  discoverArtifacts,
   formatReport,
   resolveOptions,
   runGate,
@@ -402,13 +403,53 @@ describe('gate fails when it should', () => {
 
   it('detects a requirement document missing its metadata block', () => {
     const { root, opts } = fixture();
-    // Requirement files are not metadata-bearing; SPEC and findings are. Drop
-    // only the ID row, so the Status/approval check still has something to read
-    // and this test fails for the metadata reason alone.
+    // Drop only the ID row, so the Status/approval check still has something to
+    // read and this test fails for the metadata reason alone.
     const specPath = path.join(root, 'openspec', 'changes', changeId, 'spec.md');
     fs.writeFileSync(specPath, fs.readFileSync(specPath, 'utf8').replace(/^\| \*\*ID\*\*.*$/m, ''));
     const result = runGate(opts);
     expect(findCheck(result, 'carries a metadata block').violations.join('\n')).toContain('spec.md');
+  });
+
+  it('detects a material artifact outside spec.md and findings/ with no metadata block', () => {
+    const { root, opts } = fixture();
+    // PROBLEMS.md used to be invisible to this check — the old implementation
+    // named `spec.md` plus `findings/*.md` and nothing else, so a material
+    // document could carry no block at all and the gate still reported PASS.
+    // Removing the block here must therefore be detected by name.
+    const problems = path.join(root, 'openspec', 'changes', changeId, 'PROBLEMS.md');
+    fs.writeFileSync(
+      problems,
+      fs.readFileSync(problems, 'utf8').replace(/^\| \*\*ID\*\* \|.*$/m, ''),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'carries a metadata block').violations.join('\n')).toContain(
+      'PROBLEMS.md',
+    );
+  });
+
+  it('detects a newly added artifact that carries no metadata block', () => {
+    const { root, opts } = fixture();
+    // The rule is discovered, not listed: an artifact added tomorrow in a
+    // directory nobody enumerated today must still be covered.
+    const nested = path.join(root, 'openspec', 'changes', changeId, 'notes', 'deep');
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, 'UNLISTED.md'), '# A new material artifact\n\nNo block.\n');
+    const result = runGate(opts);
+    expect(findCheck(result, 'carries a metadata block').violations.join('\n')).toContain(
+      path.join('notes', 'deep', 'UNLISTED.md'),
+    );
+  });
+
+  it('exempts only the metadata-block template, and says so by name', () => {
+    const real = resolveOptions();
+    const artifacts = discoverArtifacts(real.specDir);
+    // If this file stops being exempt, it fails for containing the example block
+    // it exists to teach; if anything else is exempt, the exemption has widened.
+    expect(artifacts.filter((f) => f.endsWith('METADATA_BLOCK.md'))).toHaveLength(1);
+    expect(artifacts.some((f) => f.endsWith(path.join('PROBLEMS.md')))).toBe(true);
+    expect(artifacts.some((f) => f.endsWith(path.join('requirements.md')))).toBe(true);
+    expect(artifacts.some((f) => f.includes(`${path.sep}decisions${path.sep}`))).toBe(true);
   });
 
   it('detects a requirement that never states its verification', () => {

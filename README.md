@@ -74,11 +74,15 @@ the flow without spending credit.
 
 This environment's bundled Node has a code signature that cannot load native
 `.node` addons, so rollup/rolldown/esbuild prebuilds fail with a *"different Team
-IDs"* `dlopen` error. `run.sh` therefore prefers a system Node **>= 24**, and only
-falls back to the bundled runtime with a warning. Override explicitly with:
+IDs"* `dlopen` error. `run.sh` therefore prefers a system Node **>= 24** and falls
+back to the bundled runtime only if it exists, then to any Node on `PATH` with a
+warning. It resolves everything from the environment — `NODE_BIN`, then `PATH`,
+then standard install prefixes, then `DSH_RUNTIME_ROOT/node/bin/node` — so a
+checkout on another machine needs no edit. Override explicitly with:
 
 ```bash
 NODE_BIN=/path/to/node ./run.sh pnpm test
+PNPM_BIN=/path/to/pnpm ./run.sh pnpm test
 ./run.sh which          # prints the Node binary that would be used
 ```
 
@@ -368,7 +372,7 @@ The baseline for everything already built is
 | Artifact | Purpose |
 |---|---|
 | `spec.md` | The baseline specification: goal, user stories, acceptance criteria, known gaps |
-| `requirements.md` | 156 requirements in 17 areas (`CONV`, `GEN`, `WA`, `SEC`, …) |
+| `requirements.md` | 159 requirements in 18 areas (`CONV`, `GEN`, `WA`, `TOOL`, …) |
 | `traceability.yaml` | Machine-readable status index, one line per requirement |
 | `PROBLEMS.md` | Problems and known deviations, in resolution order |
 | `decisions/` | `DEC-0001`–`DEC-0006`, each with options (including stop and defer), material dissent, reversibility, and success metrics fixed before the outcome |
@@ -407,7 +411,7 @@ Two properties make this more than documentation:
   the gate caught **42 requirements marked `verified` by hand with no test behind
   them** — exactly the failure mode it exists to prevent.
 
-**Coverage: 149 of 156 requirements verified, 4 `unverified`, 3 `n/a`.** The
+**Coverage: 152 of 159 requirements verified, 4 `unverified`, 3 `n/a`.** The
 deviations are recorded in `PROBLEMS.md` rather than claimed. The four
 `unverified` entries — `GEN-001`, `GEN-008`, `GEN-009`, `SIM-008` — are
 implemented and cited by a test, but the citing test exercises a substitute
@@ -435,6 +439,12 @@ this repository for verifying a mechanism before depending on it (`DEC-0006`).
 ./run.sh pnpm verify:e2e    # full HTTP flow with faked boundaries
 ./run.sh pnpm smoke:gemini  # LIVE Gemini calls — needs a real key, costs credit
 ```
+
+`.github/workflows/ci.yml` runs `typecheck`, `build`, `pnpm test` (vitest **and** the
+traceability gate) and `pnpm verify:e2e` on every pull request and every push to
+`main`, on the Node and pnpm versions `package.json` pins (see
+`openspec/changes/ci-traceability-gate/`). No secret is referenced: the suite and
+the end-to-end script fake both external boundaries.
 
 `test.sh` deliberately **does not load the real `.env`**, so a developer's live API
 key can never be spent by the suite. [tests/setup-env.ts](tests/setup-env.ts) points

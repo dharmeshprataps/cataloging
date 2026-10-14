@@ -41,7 +41,7 @@ Read [`spec.md`](spec.md) first. It is the reviewable document.
 | File | Purpose |
 |---|---|
 | [`spec.md`](spec.md) | **The specification.** Goal, user stories, acceptance criteria, known gaps, open questions. |
-| [`requirements.md`](requirements.md) | The normative requirement catalogue — 156 requirements across 17 areas. |
+| [`requirements.md`](requirements.md) | The normative requirement catalogue — 159 requirements across 18 areas. |
 | [`traceability.yaml`](traceability.yaml) | Machine-readable index: one line per requirement, with its state, verification, gaps and citing tests. |
 | [`PROBLEMS.md`](PROBLEMS.md) | Consolidated problems and known deviations, including the unverified requirements, in recommended resolution order. |
 | [`decisions/`](decisions/) | Six decision records, each with options, dissent, reversibility and success metrics fixed in advance. |
@@ -49,7 +49,7 @@ Read [`spec.md`](spec.md) first. It is the reviewable document.
 | [`templates/METADATA_BLOCK.md`](templates/METADATA_BLOCK.md) | The metadata block and claim classes used by every artifact here. |
 | [`../../../scripts/verify-spec.ts`](../../../scripts/verify-spec.ts) | The gate itself. |
 | [`../../../scripts/spec-status.ts`](../../../scripts/spec-status.ts) | CLI report; exits 1 on any violation. |
-| [`../../../tests/spec-gate.test.ts`](../../../tests/spec-gate.test.ts) | 36 tests, one falsifying each gate rule. |
+| [`../../../tests/spec-gate.test.ts`](../../../tests/spec-gate.test.ts) | 39 tests, one falsifying each gate rule. |
 
 ## Requirement ids
 
@@ -58,12 +58,13 @@ Read [`spec.md`](spec.md) first. It is the reviewable document.
 parsing · `GEN` generation · `ITER` revision and variation · `MED` media
 validation · `WA` WhatsApp · `SIM` simulator · `PERSIST` storage · `CATALOG`
 products · `CFG` configuration · `OBS` observability · `SEAM` architecture seams ·
-`SEC` security · `CONTENT` content policy · `COST` cost control.
+`SEC` security · `CONTENT` content policy · `COST` cost control · `TOOL` the
+metadata rule and runtime selection this change enforces.
 
 ## Coverage at a glance
 
-**156 requirements:** 152 `implemented`, 1 `partial`, 2 `deferred`,
-1 `not_implemented`. **149 are verified** by a test that fails when the behaviour
+**159 requirements:** 155 `implemented`, 1 `partial`, 2 `deferred`,
+1 `not_implemented`. **152 are verified** by a test that fails when the behaviour
 breaks. **4 are `unverified`** — implemented, cited by a test, but the test
 exercises a substitute rather than the code the requirement names:
 `GEN-001`, `GEN-008`, `GEN-009`, `SIM-008`. **3 are `n/a`** — they describe
@@ -88,10 +89,11 @@ exercises:
 | Area | What lands |
 |---|---|
 | `openspec/changes/requirements-baseline/` | The baseline: spec, catalogue, traceability index, problems, decisions, findings, template. |
-| `scripts/verify-spec.ts`, `spec-status.ts`, `sync-traceability.ts`, `lib/yaml.ts` | The gate, its report CLI, the citation-count sync, and the YAML reader the gate needs. |
-| `tests/` | The suite: 225 tests, including `tests/spec-gate.test.ts` and the outbound WhatsApp Cloud API path. |
+| `scripts/verify-spec.ts`, `spec-status.ts`, `sync-traceability.ts`, `lib/yaml.ts` | The gate, its report CLI, the citation-count sync, and the YAML reader the gate needs. The metadata check scans every artifact (`TOOL-001`). |
+| `scripts/lib/tooling.ts`, `scripts/run-tool.mjs` | Runtime selection for `run.sh`, in a module a test can execute (`TOOL-002`). |
+| `tests/` | The suite: 256 tests in 15 files, including `tests/spec-gate.test.ts`, `tests/tooling.test.ts`, `tests/ci-workflow.test.ts`, and the outbound WhatsApp Cloud API path. |
 | `src/` | The product implementation the suite measures. It introduces no behaviour the baseline does not describe. |
-| `Dockerfile`, `fly.toml`, `.env.example`, `run.sh`, `test.sh` | Minimum infrastructure so the suite and gate run in a clean checkout. |
+| `Dockerfile`, `fly.toml`, `.env.example`, `run.sh`, `test.sh` | Minimum infrastructure so the suite and gate run in a clean checkout — a claim `run.sh` did not meet until it stopped deriving its runtime from one machine's path (`TOOL-002`). |
 
 The implementation is here because the gate requires every `implemented`
 requirement to be cited by a test **in the same tree** that is not skipped and
@@ -107,9 +109,14 @@ one; only `wire-unwired-capabilities` remains separate (`spec.md` §9).
 2. **The gate cannot tell whether a citation supports its claim.** It proves a
    non-skipped, asserting test cites the id, never that the citation is evidence
    for *that* claim. That is exactly how `GEN-001` passed as `verified`.
-3. **No CI job runs the suite or the gate.** `.github/workflows/agent-policy.yml`
-   only checks that a PR body references a spec path. `pnpm test` must be run by
-   hand.
+3. **No CI job runs the suite or the gate — superseded by
+   `ci-traceability-gate`.** This was true at `712a12f`:
+   `.github/workflows/agent-policy.yml` only checks that a PR body references a
+   spec path, and `pnpm test` had to be run by hand. `.github/workflows/ci.yml`
+   now runs typecheck, build, the suite, the gate and the end-to-end checks on
+   every pull request and every push to `main`, and `tests/ci-workflow.test.ts`
+   holds it to that contract. The original statement is kept rather than deleted
+   because it is what the merged revision recorded.
 4. **The amended specification awaits re-approval.** `spec.md` §12 records it.
 
 ## How to review this change
