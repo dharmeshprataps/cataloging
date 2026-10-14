@@ -1,0 +1,144 @@
+# Continuous integration for the suite, the build, and the traceability gate.
+#
+# Why this exists: at the merged baseline revision (`712a12f`) nothing ran the
+# suite or the gate except a human typing commands. `openspec/changes/requirements-baseline/README.md`
+# recorded that as known limitation 3, and the unreachability of `run.sh` outside
+# one developer's machine as limitation 2. The runtime fix landed in PR #6; this
+# workflow is the job limitation 3 said was missing.
+#
+# Design notes, each asserted by `tests/ci-workflow.test.ts`:
+#
+# - One job per check, so a red end-to-end run cannot hide a red suite.
+# - Node and pnpm are the versions `package.json` already declares: `engines.node`
+#   (>= 24) and `packageManager`. `corepack enable` reads `packageManager`, so the
+#   workflow cannot drift from the pin and names no package-manager version of its
+#   own.
+# - No secrets are referenced. `tests/setup-env.ts` blanks `GEMINI_API_KEY` and
+#   `scripts/verify-e2e.ts` fakes both external boundaries, so no live Gemini or
+#   WhatsApp spend is possible.
+# - `permissions: contents: read`: this workflow never writes to the repository.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # corepack would otherwise block on an interactive "download the pinned
+  # package manager?" prompt, which reads as a hang in CI.
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the Node major package.json requires
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+      - name: Enable the package manager pinned in package.json
+        run: corepack enable
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache the pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the Node major package.json requires
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+      - name: Enable the package manager pinned in package.json
+        run: corepack enable
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache the pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the Node major package.json requires
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+      - name: Enable the package manager pinned in package.json
+        run: corepack enable
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache the pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # Runs vitest and then the `spec:status` gate, so a traceability violation
+      # fails this job even if every test passes.
+      - name: Test suite and traceability gate
+        run: pnpm test
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the Node major package.json requires
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+      - name: Enable the package manager pinned in package.json
+        run: corepack enable
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache the pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # `scripts/verify-e2e.ts` is the gate's `citationSources` entry: the
+      # `SIM-003` citation below the SSE probe lives there. Running it here is
+      # what makes that citation executed evidence rather than a comment.
+      - name: End-to-end checks
+        run: pnpm verify:e2e

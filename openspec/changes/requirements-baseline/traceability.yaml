@@ -182,3 +182,4 @@ requirements:
   COST-005: { file: requirements, title: A batch does not multiply cost, verification: verified, tests: [COST-005] }
   TOOL-001: { file: requirements, title: Every material artifact carries a metadata block, verification: verified, tests: [TOOL-001, TOOL-001, TOOL-001] }
   TOOL-002: { file: requirements, title: The toolchain is resolved from the environment, verification: verified, tests: [TOOL-002, TOOL-002, TOOL-002, TOOL-002, TOOL-002, TOOL-002, TOOL-002, TOOL-002, TOOL-002, TOOL-002, TOOL-002] }
+  TOOL-003: { file: requirements, title: The suite and gate run in CI alongside the build and the e2e checks, verification: verified, tests: [TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003, TOOL-003] }

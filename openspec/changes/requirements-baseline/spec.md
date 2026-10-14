@@ -167,7 +167,7 @@ Checkable statements. Each is verifiable without reading the code.
 
 ## 5. What is verified, and what is not
 
-**Verified (151 of 158 requirements):** each has at least one automated test that
+**Verified (152 of 159 requirements):** each has at least one automated test that
 fails if the behaviour breaks, with the test citing the requirement id in its
 title. The suite ships in this change (see §9), so the citations resolve to tests
 that run in this tree. Coverage spans the conversation state machine, batching,
@@ -175,7 +175,7 @@ brief confirmation, generation and iteration, media validation, the inbound and
 outbound WhatsApp Cloud API path, the simulator surface, persistence, catalogue
 export, configuration, and the security controls around webhook signatures.
 
-**Unverified (4 of 158), recorded as open problems rather than claims:** each is
+**Unverified (4 of 159), recorded as open problems rather than claims:** each is
 implemented and cited by a test, but the citing test exercises a substitute
 rather than the code the requirement names, so it would still pass if the
 behaviour broke. Full detail in the "Unverified requirements" table in
@@ -188,7 +188,7 @@ behaviour broke. Full detail in the "Unverified requirements" table in
 | `GEN-009` a policy refusal is never retried | `isContentPolicyError` is never executed by any test. |
 | `SIM-008` a non-simulator channel does not serve the UI | The only citing test asserts the configured channel, which holds whether or not the 409 branch exists. |
 
-**Not applicable (3 of 158), recorded as open problems rather than claims:**
+**Not applicable (3 of 159), recorded as open problems rather than claims:**
 
 | Requirement | State | Why it is not implemented |
 |---|---|---|
@@ -283,7 +283,7 @@ because the gate cannot be honest without them:
 | Change ID | Status | Scope |
 |---|---|---|
 | `traceability-gate` | **In this change** | The `AREA-NNN` citation convention, the checker that fails on drift, and its falsification tests (`tests/spec-gate.test.ts`). |
-| `expand-test-coverage` | **In this change** | The suite that demonstrates 151 of 158 requirements, including the previously untested outbound WhatsApp Cloud API path. A gate whose citations point at another branch is not evidence, so the suite lands here. |
+| `expand-test-coverage` | **In this change** | The suite that demonstrates 152 of 159 requirements (151 of 158 when this change merged; the follow-on `ci-traceability-gate` added `TOOL-003`), including the previously untested outbound WhatsApp Cloud API path. A gate whose citations point at another branch is not evidence, so the suite lands here. |
 | `wire-unwired-capabilities` | Still a follow-on | `WA-009`, `F-001` F3 and F5, and the injectable SDK client that would turn `GEN-001`, `GEN-008`, `GEN-009` and `SIM-008` from `unverified` into genuinely verified. |
 
 One change remains genuinely separate. Absorbing it here would make this pull
@@ -295,6 +295,14 @@ The product implementation lands with the baseline because the baseline's own
 rule requires a citing test in the same tree, and the tests require the code they
 exercise. `Dockerfile`, `fly.toml`, `.env.example`, `run.sh` and `test.sh` are
 included only so the suite and the gate can run in a clean checkout.
+
+That last claim was not true of `run.sh` until
+`requirements-baseline-findings` (PR #6) stopped deriving its runtime from one
+machine's path, and it was not *enforced* until `ci-traceability-gate` (issue #4)
+added `.github/workflows/ci.yml`, which runs typecheck, the build, the suite, the
+gate and the end-to-end checks on every pull request and every push to `main`.
+CI enforcement was therefore the unnamed remainder of this section, not a
+follow-on that this change had accounted for.
 
 ---
 
@@ -316,6 +324,7 @@ report.
 | Every rule in the gate fails when violated | `tests/spec-gate.test.ts` — one falsification test per rule. |
 | Every material artifact carries a metadata block | Automated: gate check `every requirement document and artifact carries a metadata block`, which scans the change directory recursively; the only exemption is the template. Falsified by removing the block from `PROBLEMS.md` and from a newly added artifact (`TOOL-001`). |
 | The suite runs in a checkout that is not the author's | Automated: `tests/tooling.test.ts` drives the real `./run.sh`, asserts no machine-absolute path appears in `run.sh`/`test.sh`, and exercises runtime selection against stubbed runtimes (`TOOL-002`). |
+| The suite, the gate, the build and the end-to-end checks run on every pull request and every push to `main` | Automated: `.github/workflows/ci.yml`, asserted by `tests/ci-workflow.test.ts` (`ci-traceability-gate`). |
 | Prose counts match the index | Manual: read `./run.sh pnpm spec:status` and compare against §5, `README.md` and `requirements.md`. Not mechanised. |
 | No document claims behaviour that contradicts the code | Reviewer compares a sample against `src/`. |
 | The specification does not contradict `AGENTS.md` or `openspec/README.md` | Read together. |
@@ -367,6 +376,8 @@ instruction is quoted in the metadata block above.
 says implementation does not begin until a specification carries an explicit
 `APPROVED` marker, so this change must not leave draft until a human confirms
 this amended revision. The state counts in §5 are read from
-`./run.sh pnpm spec:status` at this revision: 151 `verified`, 4 `unverified`,
-3 `n/a`, of 158. `TOOL-001` and `TOOL-002` were added by this change when its own
-first implementation failed them; §5's counts follow the gate.
+`./run.sh pnpm spec:status` at this revision: 152 `verified`, 4 `unverified`,
+3 `n/a`, of 159. `TOOL-001` and `TOOL-002` were added by this change when its own
+first implementation failed them; `TOOL-003` was added by the follow-on
+`ci-traceability-gate` change, which is what made the suite and the gate run in CI
+rather than by hand. §5's counts follow the gate.
