@@ -169,10 +169,40 @@ everything, which is worse than either alone. Its substantive content has been
 folded into this change.
 
 **What is preserved:** the requirement set, the decision records, and the
-findings are in this change directory. The test suites remain on the local branch
-`local/spec-framework-wip` and are proposed for a separate change
-(`expand-test-coverage`) so that a reviewer can reject this baseline without also
-rejecting the tests.
+findings are in this change directory. The test suites that were on the local
+branch `local/spec-framework-wip` now ship **in this change**, absorbed together
+with the gate; there is no separate `expand-test-coverage` change.
+
+---
+
+## Unverified requirements
+
+Four requirements are `implemented` and carry a citing test, yet no test would
+fail if the behaviour broke. The gate reports them as
+`UNVERIFIED REQUIREMENTS (4) — implemented, unproven` and points here.
+
+| Requirement | Why the citing test does not prove it |
+|---|---|
+| `GEN-001` — the adapter calls `interactions.create` once per generation | No test constructs `GeminiImageProvider`. The citing test injects `FakeImageProvider` and asserts the pipeline↔provider contract (`GEN-002`), so the adapter body could `throw` and the suite would still pass. |
+| `GEN-008` — a transient failure is retried with backoff | The retry loop lives only in `GeminiImageProvider`, which no test exercises; the citing test injects `FakeImageProvider`. |
+| `GEN-009` — a content-policy refusal is never retried | `isContentPolicyError` is never executed by any test for the same reason. |
+| `SIM-008` — a non-simulator channel does not serve the simulator UI | The only citing test asserts the configured channel, which holds whether or not the 409 branch exists. |
+
+These are recorded rather than claimed. A false `verified` would be worse than an
+unverified one, because it would hide the gap: `GEN-001` in particular carries the
+"we call the Gemini interactions API" claim, and the gate's structural rules
+cannot detect that a citation fails to support its claim.
+
+**Correction, for all four:** inject the SDK client — mirroring the
+injected-credentials/`fetch` seam in `src/messaging/whatsapp.ts` — then assert the
+concrete call: one `interactions.create` with the configured model and a returned
+image plus interaction id (`GEN-001`), the retry count and backoff on a transient
+error (`GEN-008`), no retry on a policy refusal (`GEN-009`), and the 409 for a
+non-simulator channel (`SIM-008`). This is product code and belongs to a
+follow-on change (`wire-unwired-capabilities`), not to the baseline itself.
+
+Closely related: **P-2** records that no real image has ever been generated, which
+is the outcome-level version of the same absence of evidence.
 
 ---
 

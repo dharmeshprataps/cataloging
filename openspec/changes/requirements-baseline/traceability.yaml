@@ -66,7 +66,7 @@ requirements:
   BRIEF-005: { file: requirements, title: The brief is confirmed before any generation, verification: verified, tests: [BRIEF-005] }
   BRIEF-006: { file: requirements, title: Corrections do not lose the original request, verification: verified, tests: [BRIEF-006] }
   BRIEF-007: { file: requirements, title: The brief determines aspect ratio and image size, verification: verified, tests: [BRIEF-007, BRIEF-007] }
-  GEN-001: { file: requirements, title: Generation goes through the Gemini interactions API, verification: verified, tests: [GEN-001] }
+  GEN-001: { file: requirements, title: Generation goes through the Gemini interactions API, verification: unverified, gap: no test constructs GeminiImageProvider so the adapter call shape is never exercised; the citing test injects FakeImageProvider and asserts only the prompt and reference contract; replacing the adapter body with a throw leaves every test passing, finding: F-002, tests: [GEN-001] }
   GEN-002: { file: requirements, title: The pipeline depends on an interface not on Gemini, verification: verified, tests: [GEN-002] }
   GEN-003: { file: requirements, title: The prompt is composed from separable layers, verification: verified, tests: [GEN-003, GEN-003, GEN-003, GEN-003, GEN-003] }
   GEN-004: { file: requirements, title: The model must reproduce the garment faithfully, verification: verified, tests: [GEN-004] }

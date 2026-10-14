@@ -17,13 +17,20 @@
 
 ## Summary
 
-The traceability gate reports **156 requirements: 153 `implemented`, 1
-`not_implemented`, 2 `partial`, and 43 `unverified`.**
+**This finding is the record of a moment in normalization, not the current
+state.** When the catalogue was first normalised, the gate reported **156
+requirements: 153 `implemented`, 1 `not_implemented`, 2 `partial`, and 43
+`unverified`.**
 
 `unverified` means: code exists, the requirement is met as far as inspection
 shows, and **no automated test would fail if it silently broke.** 43 requirements
-is roughly a third of the system's specified behaviour that could regress without
-anyone noticing.
+was roughly a third of the system's specified behaviour that could regress
+without anyone noticing.
+
+Most of those 43 are now genuinely verified — see "Count reconciliation" below
+for the current figures and what is left. The grouped findings underneath are
+retained because they explain *why* each group was hard to test, which is still
+the honest context for the four that remain.
 
 This artifact is the catch-all finding referenced by those requirements. It
 exists so that `unverified` is an honest, visible status rather than a quiet
@@ -126,12 +133,23 @@ because the wrong hero would be user-visible.
 
 ## Count reconciliation
 
-The 43 `unverified` entries are: **41 requirements marked `unverified` in
-`traceability.yaml` plus 2 `n/a`** (`WA-009` `not_implemented`, `SEC-006`
-`partial`). The prose in this artifact groups them by theme; `traceability.yaml`
-is authoritative for the individual statuses, and `pnpm spec:status` regenerates
-the list. This document deliberately does not restate every ID, because a
-duplicated list is a list that drifts.
+**At this revision:** 156 requirements — 149 `verified`, 4 `unverified`
+(`GEN-001`, `GEN-008`, `GEN-009`, `SIM-008`), 3 `n/a` (`WA-009`, `CONV-008`,
+`SEC-006`). `./run.sh pnpm spec:status` is authoritative for the individual
+statuses and regenerates the list; `PROBLEMS.md` carries the per-requirement
+reason in its "Unverified requirements" table.
+
+**At normalization time (this finding's original figures):** 43 `unverified` —
+41 requirements marked `unverified` in `traceability.yaml` plus 2 `n/a`
+(`WA-009` `not_implemented`, `SEC-006` `partial`). The prose in this artifact
+groups them by theme; that grouping is why the jump from 43 to 4 is explainable
+rather than suspicious: the suite that landed with the gate turned most of them
+into real citations, and the ones that could not be honestly cited were either
+recorded as `unverified` with a gap or are still open.
+
+The four that remain are not untested-by-oversight: each has a citing test, and
+each of those tests substitutes a fake for the code the requirement names. See
+`PROBLEMS.md` for the correction each one needs.
 
 ## What would resolve this artifact
 

@@ -1,19 +1,38 @@
 # Change `requirements-baseline`
 
-**Status:** DRAFT — awaiting approval
-**Type:** documentation only (no source changes)
+| Field | Value |
+|---|---|
+| **ID** | `SPEC-REQ-BASELINE` |
+| **Title** | Requirement baseline and traceability convention |
+| **Owner** | Dharmesh Pratap Singh (operator) |
+| **Status** | APPROVED — amended 2026-10-14, re-approval pending (§12 of `spec.md`) |
+| **Created** | 2026-10-14 |
+| **Last modified** | 2026-10-14 |
+| **Spec** | [`spec.md`](spec.md) |
+| **Source classification** | MIXED |
+| **Confidence** | MODERATE |
+| **Supersedes** | — |
+| **Superseded by** | — |
+| **Dependencies** | `requirements.md`, `PROBLEMS.md`, `decisions/`, `findings/` |
+
+**Type:** specification, gate, test suite, and the implementation the suite
+exercises. This change does contain source code — see "What this change
+contains" below.
 
 ## What this is
 
-A written baseline of what the system is supposed to do, so that future changes
-have something to be reviewed against. The repository's requirement process
+A written baseline of what the system is supposed to do, plus the mechanism that
+keeps future changes honest against it. The repository's requirement process
 produces a specification *before* implementation for each change; this change
-supplies the two things that process needs and that do not yet exist:
+supplies what that process needs and that did not previously exist:
 
 1. a **baseline** describing behaviour that already exists, so a new spec can
-   state what it must not break; and
+   state what it must not break;
 2. a stable **requirement id scheme**, so a review comment, a test, and a spec
-   line can all refer to the same thing.
+   line can all refer to the same thing; and
+3. a **gate** that fails when the catalogue, the citations, or the code drift
+   apart — with a falsification test proving each of its rules fails when
+   violated.
 
 Read [`spec.md`](spec.md) first. It is the reviewable document.
 
@@ -23,10 +42,14 @@ Read [`spec.md`](spec.md) first. It is the reviewable document.
 |---|---|
 | [`spec.md`](spec.md) | **The specification.** Goal, user stories, acceptance criteria, known gaps, open questions. |
 | [`requirements.md`](requirements.md) | The normative requirement catalogue — 156 requirements across 17 areas. |
-| [`PROBLEMS.md`](PROBLEMS.md) | Consolidated problems and known deviations, in recommended resolution order. |
+| [`traceability.yaml`](traceability.yaml) | Machine-readable index: one line per requirement, with its state, verification, gaps and citing tests. |
+| [`PROBLEMS.md`](PROBLEMS.md) | Consolidated problems and known deviations, including the unverified requirements, in recommended resolution order. |
 | [`decisions/`](decisions/) | Six decision records, each with options, dissent, reversibility and success metrics fixed in advance. |
 | [`findings/`](findings/) | The three original findings, from which `PROBLEMS.md` is distilled. |
 | [`templates/METADATA_BLOCK.md`](templates/METADATA_BLOCK.md) | The metadata block and claim classes used by every artifact here. |
+| [`../../../scripts/verify-spec.ts`](../../../scripts/verify-spec.ts) | The gate itself. |
+| [`../../../scripts/spec-status.ts`](../../../scripts/spec-status.ts) | CLI report; exits 1 on any violation. |
+| [`../../../tests/spec-gate.test.ts`](../../../tests/spec-gate.test.ts) | 36 tests, one falsifying each gate rule. |
 
 ## Requirement ids
 
@@ -40,8 +63,15 @@ products · `CFG` configuration · `OBS` observability · `SEAM` architecture se
 ## Coverage at a glance
 
 **156 requirements:** 152 `implemented`, 1 `partial`, 2 `deferred`,
-1 `not_implemented`. **153 are verified** by a test that fails when the behaviour
-breaks; three are not, and each is recorded in `PROBLEMS.md` rather than claimed.
+1 `not_implemented`. **149 are verified** by a test that fails when the behaviour
+breaks. **4 are `unverified`** — implemented, cited by a test, but the test
+exercises a substitute rather than the code the requirement names:
+`GEN-001`, `GEN-008`, `GEN-009`, `SIM-008`. **3 are `n/a`** — they describe
+behaviour that does not exist: `WA-009`, `CONV-008`, `SEC-006`.
+
+All seven deviations are recorded in [`PROBLEMS.md`](PROBLEMS.md) rather than
+claimed. These figures are read from `./run.sh pnpm spec:status`, which is the
+authority; the prose here is kept in step by hand.
 
 The two claims that bound everything else:
 
@@ -50,33 +80,50 @@ The two claims that bound everything else:
 - **The image model is a general image model, not a purpose-built try-on model**
   (`DEC-0002`), with the dissent recorded.
 
-## What this change deliberately does not contain
+## What this change contains
 
-No source changes, no tests, no CI. It is documentation, so that a reviewer can
-approve or reject the baseline on its merits without also accepting an
-implementation.
+The baseline, the gate, the suite, and the product implementation the suite
+exercises:
 
-## Proposed follow-on changes
+| Area | What lands |
+|---|---|
+| `openspec/changes/requirements-baseline/` | The baseline: spec, catalogue, traceability index, problems, decisions, findings, template. |
+| `scripts/verify-spec.ts`, `spec-status.ts`, `sync-traceability.ts`, `lib/yaml.ts` | The gate, its report CLI, the citation-count sync, and the YAML reader the gate needs. |
+| `tests/` | The suite: 225 tests, including `tests/spec-gate.test.ts` and the outbound WhatsApp Cloud API path. |
+| `src/` | The product implementation the suite measures. It introduces no behaviour the baseline does not describe. |
+| `Dockerfile`, `fly.toml`, `.env.example`, `run.sh`, `test.sh` | Minimum infrastructure so the suite and gate run in a clean checkout. |
 
-Proposed separately to keep each pull request focused on one approved
-specification, per `AGENTS.md`.
+The implementation is here because the gate requires every `implemented`
+requirement to be cited by a test **in the same tree** that is not skipped and
+asserts something. A citation pointing at another branch is a pointer, not
+evidence. Two of the three changes originally proposed as follow-ons
+(`traceability-gate`, `expand-test-coverage`) are therefore absorbed into this
+one; only `wire-unwired-capabilities` remains separate (`spec.md` §9).
 
-| Proposed change id | Scope | Depends on |
-|---|---|---|
-| `traceability-gate` | The citation convention, the checker that fails on spec/code drift, and its falsification tests. | this change |
-| `expand-test-coverage` | Land the tests that already demonstrate 153/156, including the previously untested outbound WhatsApp Cloud API path. | this change |
-| `wire-unwired-capabilities` | `P-1` (`WA-009`), `P-6`, `P-7`. | this change, and `P-2` for the quality items |
+## Known limitations
 
-Work for the second and third already exists on the local branch
-`local/spec-framework-wip`, which contains the rejected framework's implementation
-(the test suites alone are worth keeping). It is deliberately **not** pushed.
+1. **`GEN-001`, `GEN-008`, `GEN-009`, `SIM-008` are unverified.** Each needs an
+   injectable SDK client — product code, and part of `wire-unwired-capabilities`.
+2. **The gate cannot tell whether a citation supports its claim.** It proves a
+   non-skipped, asserting test cites the id, never that the citation is evidence
+   for *that* claim. That is exactly how `GEN-001` passed as `verified`.
+3. **No CI job runs the suite or the gate.** `.github/workflows/agent-policy.yml`
+   only checks that a PR body references a spec path. `pnpm test` must be run by
+   hand.
+4. **The amended specification awaits re-approval.** `spec.md` §12 records it.
 
 ## How to review this change
 
-1. Read `spec.md` — especially §5 (what is verified) and §7 (known gaps).
-2. Spot-check three requirements in `requirements.md` against the code they
-   describe.
-3. Decide the open questions in §11: the baseline's granularity, where the
-   catalogue should live permanently, who signs off the three unverified
-   requirements, and whether the SynthID watermark is acceptable.
-4. Reply `/approve` or `/change <instruction>`.
+1. Read `spec.md` — especially §1.3 (scope), §5 (what is verified) and §7 (known
+   gaps).
+2. Run `./run.sh pnpm test` and `./run.sh pnpm spec:status`; compare the counts
+   against §5 and the section above.
+3. Spot-check three requirements in `requirements.md` against the code they
+   describe, and spot-check that the four `unverified` entries are genuinely
+   unproven.
+4. Decide the open questions in §11: the baseline's granularity, where the
+   catalogue should live permanently, who accepts the four unverified
+   requirements, whether the SynthID watermark is acceptable, and whether the
+   gate should be able to detect an unsupporting citation.
+5. Confirm the amended revision (§12) and reply `/approve` or
+   `/change <instruction>`.

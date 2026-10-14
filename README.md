@@ -407,10 +407,14 @@ Two properties make this more than documentation:
   the gate caught **42 requirements marked `verified` by hand with no test behind
   them** — exactly the failure mode it exists to prevent.
 
-**Coverage: 153 of 156 requirements verified.** The three exceptions are recorded
-in `PROBLEMS.md` rather than claimed: `WA-009` (24-hour service window
-unenforced), `CONV-008` (unreachable guard), `SEC-006` (unauthenticated media and
-catalogue endpoints).
+**Coverage: 149 of 156 requirements verified, 4 `unverified`, 3 `n/a`.** The
+deviations are recorded in `PROBLEMS.md` rather than claimed. The four
+`unverified` entries — `GEN-001`, `GEN-008`, `GEN-009`, `SIM-008` — are
+implemented and cited by a test, but the citing test exercises a substitute
+rather than the code the requirement names. The three `n/a` entries describe
+behaviour that does not exist: `WA-009` (24-hour service window unenforced),
+`CONV-008` (unreachable guard), `SEC-006` (unauthenticated media and catalogue
+endpoints). `./run.sh pnpm spec:status` is the authority for these counts.
 
 ### Why citations are plain text, not test tags
 

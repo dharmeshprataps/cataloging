@@ -13,11 +13,18 @@ Verification: `verified` (a test fails if the behaviour breaks) · `unverified`
 ## Coverage
 
 **156 requirements** — 152 `implemented`, 1 `partial`, 2 `deferred`,
-1 `not_implemented`. **153 verified**, 3 not (`WA-009`, `CONV-008`, `SEC-006`).
+1 `not_implemented`. **149 verified**, **4 `unverified`**, **3 `n/a`**.
 
-Every `implemented` requirement is verified by a test whose title begins with the
-requirement id. The three exceptions are recorded in
-[`PROBLEMS.md`](PROBLEMS.md).
+The `unverified` set is `GEN-001`, `GEN-008`, `GEN-009`, `SIM-008`: each is
+implemented, and each has a non-skipped asserting test that cites it, but that
+test exercises a substitute rather than the code the requirement names, so it
+would still pass if the behaviour broke. The `n/a` set is `WA-009`, `CONV-008`,
+`SEC-006`: each describes behaviour that does not exist.
+
+Coverage is not proof. Every `implemented` requirement is cited by a test, but
+for the four above the citation is a pointer rather than evidence. All seven
+deviations are recorded in [`PROBLEMS.md`](PROBLEMS.md), including the
+"Unverified requirements" table that the gate's own report points readers to.
 
 ---
 

@@ -22,13 +22,14 @@
 | **Author** | DSH implementation agent (session on `dharmeshprats/cataloging`) |
 | **Approved by** | Dharmesh Pratap Singh (operator) |
 | **Approval record** | `/approve` on https://github.com/dharmeshprataps/cataloging/pull/2#issuecomment-6173700774 (2026-10-14T16:57:30Z) |
+| **Revised** | 2026-10-14 — §1.3, §5, §9, §10, §11 and the header note amended on the operator's instruction to absorb `traceability-gate` and `expand-test-coverage` into this change and to own the implementation the suite exercises. Authorising instruction: *"amend the approved spec to drop that non-goal and own the implementation"*, replying to review https://github.com/dharmeshprataps/cataloging/pull/3#pullrequestreview-5521871745. §2, §3, §4, §6, §7 and §8 are unchanged. |
 
-> **This specification is documentation only.** It establishes the requirement
-> baseline and the traceability convention for the existing system. It contains
-> **no source changes**. The implementation that satisfies it, and the
-> traceability gate that enforces it, are proposed as **follow-on changes** (see
-> §9). This keeps the change reviewable and respects the rule that implementation
-> begins only after approval.
+> **This change carries an implementation, not only documents.** It establishes
+> the requirement baseline and the traceability convention, and it lands the
+> gate, the test suite, and the product implementation the suite exercises. The
+> product code introduces no behaviour the baseline does not already describe;
+> the infrastructure files (`Dockerfile`, `fly.toml`, `.env.example`, `run.sh`,
+> `test.sh`) exist so the suite and gate can run. See §1.3 and §9.
 
 ---
 
@@ -59,14 +60,41 @@ does not yet have:
 Without these, "the reviewer must compare a pull request to that exact approved
 specification" (`AGENTS.md`) has nothing to compare regressions against.
 
-### 1.3 Non-goals
+### 1.3 Goals and non-goals
 
-- **Not an implementation change.** No file outside `openspec/` and `.gitignore`
-  is modified.
+This change does three things, and the third is why the first two can be trusted:
+
+1. **It writes the baseline** — a stated requirement for behaviour that already
+   exists, so a future spec can say what it must not break.
+2. **It lands the gate that enforces the baseline** — an automated checker that
+   fails when the catalogue, the citations, or the code drift apart, with a
+   falsification test for every one of its rules.
+3. **It lands the implementation and the suite the gate measures** — the product
+   code, the tests that cite requirement ids, and the infrastructure needed to
+   run them.
+
+The third item is deliberate and was approved as part of the baseline. The gate
+requires every `implemented` requirement to be cited by a test **in the same
+tree** that is not skipped and contains an assertion; a citation that points at
+another branch is a pointer, not evidence. That rule cannot be satisfied by a
+gate-only diff, so the suite and the code it exercises ship with it.
+
+The implementation is **not new product behaviour** relative to this baseline: it
+is the system the baseline describes, written down. No requirement here is
+satisfied by code that the baseline does not already state.
+
+Non-goals:
+
 - **Not a redesign.** This spec describes the system as it is. It does not
-  propose new product behaviour.
+  propose new product behaviour, and it does not change behaviour to fit a
+  document. Where the code and the catalogue disagree, the catalogue records the
+  deviation as an open problem (§7) rather than the code being quietly adjusted.
 - **Not an approval of current behaviour.** Where the implementation has gaps,
-  they are recorded as open problems (§7) rather than written up as correct.
+  they are recorded as open problems (§7) and unverified requirements
+  (`PROBLEMS.md`) rather than written up as correct.
+- **Not a fix for the unwired capabilities.** `WA-009`, the unused vision pass,
+  the unread style guide, and the four `unverified` requirements listed in §5 all
+  stay open; they are proposed for a follow-on change (§9), not resolved here.
 - **Not a replacement for per-change specs.** This is the standing baseline;
   each feature change still gets its own `openspec/changes/<change-id>/spec.md`.
 
@@ -131,22 +159,39 @@ Checkable statements. Each is verifiable without reading the code.
 
 ## 5. What is verified, and what is not
 
-**Verified (153 of 156 requirements):** each has at least one automated test that
+**Verified (149 of 156 requirements):** each has at least one automated test that
 fails if the behaviour breaks, with the test citing the requirement id in its
-title. That suite currently sits on an unmerged branch (see §9): this change
-carries the specification and the evidence index, not the tests themselves, so
-that the baseline can be reviewed on its own merits. Coverage spans the conversation state machine, batching, brief
-confirmation, generation and iteration, media validation, the inbound and
+title. The suite ships in this change (see §9), so the citations resolve to tests
+that run in this tree. Coverage spans the conversation state machine, batching,
+brief confirmation, generation and iteration, media validation, the inbound and
 outbound WhatsApp Cloud API path, the simulator surface, persistence, catalogue
 export, configuration, and the security controls around webhook signatures.
 
-**Not verified (3 of 156), recorded as open problems rather than claims:**
+**Unverified (4 of 156), recorded as open problems rather than claims:** each is
+implemented and cited by a test, but the citing test exercises a substitute
+rather than the code the requirement names, so it would still pass if the
+behaviour broke. Full detail in the "Unverified requirements" table in
+[`PROBLEMS.md`](PROBLEMS.md).
 
-| Requirement | State | Why it is not verified |
+| Requirement | Why the citing test does not prove it |
+|---|---|
+| `GEN-001` adapter calls `interactions.create` | No test constructs `GeminiImageProvider`; the citing test injects `FakeImageProvider` and asserts the pipeline↔provider contract (`GEN-002`). |
+| `GEN-008` transient failure is retried | The retry loop lives only in `GeminiImageProvider`, which no test exercises. |
+| `GEN-009` a policy refusal is never retried | `isContentPolicyError` is never executed by any test. |
+| `SIM-008` a non-simulator channel does not serve the UI | The only citing test asserts the configured channel, which holds whether or not the 409 branch exists. |
+
+**Not applicable (3 of 156), recorded as open problems rather than claims:**
+
+| Requirement | State | Why it is not implemented |
 |---|---|---|
 | `WA-009` 24-hour service window | `not_implemented` | The configured window is read nowhere. Meta rejects out-of-window sends server-side. Highest real-world failure risk. |
 | `CONV-008` review without an output | `deferred` | The guard exists but is unreachable in normal operation. |
 | `SEC-006` unauthenticated media/catalogue endpoints | `deferred` | Unauthenticated by design for local use; must not be exposed publicly. |
+
+The gate's structural rules cannot detect that a citation fails to support its
+claim — they check that a non-skipped, asserting test cites the id, never that the
+citation is evidence for *that* claim. The four requirements above are therefore
+marked by hand, and this limitation is recorded rather than hidden.
 
 Two further claims deserve their own emphasis because they bound everything else:
 
@@ -222,37 +267,48 @@ order:
 
 ---
 
-## 9. Follow-on changes (not part of this one)
+## 9. Scope of this change, and what remains
 
-This specification deliberately contains no implementation. Once approved, it
-authorises these separate changes, each with its own spec:
+Two of the three changes originally proposed here are **absorbed into this one**,
+because the gate cannot be honest without them:
 
-| Proposed change ID | Scope |
-|---|---|
-| `traceability-gate` | The `AREA-NNN` citation convention, the checker that fails on drift, and its falsification tests. |
-| `expand-test-coverage` | Land the tests that demonstrate the 153 verified requirements, including the previously untested outbound WhatsApp path. |
-| `wire-unwired-capabilities` | `WA-009`, `F-001` F3 and F5. |
+| Change ID | Status | Scope |
+|---|---|---|
+| `traceability-gate` | **In this change** | The `AREA-NNN` citation convention, the checker that fails on drift, and its falsification tests (`tests/spec-gate.test.ts`). |
+| `expand-test-coverage` | **In this change** | The suite that demonstrates 149 of 156 requirements, including the previously untested outbound WhatsApp Cloud API path. A gate whose citations point at another branch is not evidence, so the suite lands here. |
+| `wire-unwired-capabilities` | Still a follow-on | `WA-009`, `F-001` F3 and F5, and the injectable SDK client that would turn `GEN-001`, `GEN-008`, `GEN-009` and `SIM-008` from `unverified` into genuinely verified. |
 
-Proposing these separately follows `AGENTS.md` ("keep each pull request focused on
-one approved specification") and means a reviewer can reject the baseline without
-also rejecting the tests.
+One change remains genuinely separate. Absorbing it here would make this pull
+request unauditable, and it has an external dependency (an approved Meta message
+template) that this change does not.
+
+This change does not introduce product behaviour the baseline does not describe.
+The product implementation lands with the baseline because the baseline's own
+rule requires a citing test in the same tree, and the tests require the code they
+exercise. `Dockerfile`, `fly.toml`, `.env.example`, `run.sh` and `test.sh` are
+included only so the suite and the gate can run in a clean checkout.
 
 ---
 
 ## 10. Test plan
 
-This change adds documentation only, so it has no code tests. Verification of the
-specification itself is by review:
+This change carries the suite, the gate, and the code they measure. The gate
+itself is covered twice: as `tests/spec-gate.test.ts`, where every rule has a
+falsification test that makes it fail, and as the `spec:status` CLI, which exits
+non-zero on any violation. Prose cannot be checked mechanically, so the
+catalogue's counts are kept in step by hand and reconciled against the gate's own
+report.
 
 | Check | Method |
 |---|---|
-| Every requirement id is unique and well-formed | Manual pass over `requirements.md`; automated in the follow-on `traceability-gate` change. |
-| Every `implemented` requirement names a test | Catalogue `Status` column; automated in `traceability-gate`. |
-| Every `deferred`/`not_implemented` requirement links a problem | Same. |
+| Every requirement id is unique and well-formed | Automated: gate check `requirement ids are well formed`. |
+| Every `implemented` requirement names a test | Automated: `every implemented requirement is covered by at least one test`. |
+| Every `verified` requirement is falsifiable in principle | Automated in part: the gate proves a non-skipped asserting test cites it. That a citation actually *supports* its claim is a human judgement, and the four known failures are listed in §5. |
+| Every `deferred`/`not_implemented` requirement links a problem | Automated: `a not_implemented or deferred requirement links a finding`. |
+| Every rule in the gate fails when violated | `tests/spec-gate.test.ts` — one falsification test per rule. |
+| Prose counts match the index | Manual: read `./run.sh pnpm spec:status` and compare against §5, `README.md` and `requirements.md`. Not mechanised. |
 | No document claims behaviour that contradicts the code | Reviewer compares a sample against `src/`. |
 | The specification does not contradict `AGENTS.md` or `openspec/README.md` | Read together. |
-
-The follow-on `traceability-gate` change will make the first three mechanical.
 
 ---
 
@@ -268,11 +324,18 @@ These need a human decision; the agent has deliberately not assumed an answer.
    This spec places it under the change directory. A permanent home such as
    `openspec/baseline/` may be more natural once several changes exist, but that
    is a repository-structure decision, not the agent's to make.
-3. **Who confirms the three unverified requirements are acceptable?** Resolving
-   `WA-009` needs an approved Meta message template, which is an external
+3. **Who accepts the four unverified requirements as they stand?** `GEN-001`,
+   `GEN-008`, `GEN-009` and `SIM-008` are implemented but unproven, and closing
+   that gap needs an injectable SDK client (product code). Resolving `WA-009`
+   additionally needs an approved Meta message template, which is an external
    dependency with lead time.
 4. **Is the SynthID watermark acceptable** for published brand imagery? If not,
    it changes the image-provider decision (`DEC-0002`) rather than the bot.
+5. **Should the gate be able to detect a citation that does not support its
+   claim?** It currently cannot: it proves a non-skipped asserting test cites the
+   id, which is what `GEN-001` slipped through. Detecting support mechanically
+   would mean binding each requirement to an executable probe, which is a
+   substantially larger mechanism than `DEC-0006` describes.
 
 ---
 
@@ -283,5 +346,16 @@ revise this specification.
 
 Status: APPROVED — approved by Dharmesh Pratap Singh on 2026-10-14
 (`/approve` on https://github.com/dharmeshprataps/cataloging/pull/2#issuecomment-6173700774).
-Recorded here by the implementation agent; §1–§12 are unmodified from the
-reviewed revision.
+
+Revised 2026-10-14 on the operator's instruction to absorb `traceability-gate`
+and `expand-test-coverage` into this change and to own the implementation the
+suite exercises: §1.3, §5, §9, §10, §11 and the header note were amended. §2, §3,
+§4, §6, §7 and §8 are unchanged from the approved revision. The authorising
+instruction is quoted in the metadata block above.
+
+**Re-approval note.** The amendments above are not yet re-approved. `AGENTS.md`
+says implementation does not begin until a specification carries an explicit
+`APPROVED` marker, so this change must not leave draft until a human confirms
+this amended revision. The state counts in §5 are read from
+`./run.sh pnpm spec:status` at this revision: 149 `verified`, 4 `unverified`,
+3 `n/a`, of 156.

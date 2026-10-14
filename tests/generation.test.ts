@@ -14,14 +14,18 @@ import { config } from '../src/config.js';
  * Generation semantics: what the pipeline asks the provider for, and how it
  * records what comes back.
  *
- * `GEN-001` is deliberately written as an interface contract rather than a claim
- * about the Gemini SDK. The pipeline proves it depends only on `ImageProvider`
- * (`GEN-002`); whether the concrete adapter's SDK call is correct is a separate
- * claim, covered by `scripts/smoke-gemini.ts` and recorded as `P-2` in
- * `openspec/changes/requirements-baseline/PROBLEMS.md`. That is also why
- * `GEN-008` and `GEN-009` carry `verification: unverified`: the retry loop and
- * the content-policy classification both live in `GeminiImageProvider`, while
- * every test here injects `FakeImageProvider`.
+ * `GEN-001` is a claim about the adapter: that it calls `interactions.create`
+ * once with the configured model. Nothing in this file can falsify that, because
+ * every test here injects `FakeImageProvider` — this test asserts the
+ * pipeline↔provider contract (`GEN-002`) instead. `GEN-001` therefore carries
+ * `verification: unverified` in `traceability.yaml`, together with `GEN-008` and
+ * `GEN-009` (the retry loop and content-policy classification also live in
+ * `GeminiImageProvider`) and `SIM-008`. The live smoke test
+ * (`scripts/smoke-gemini.ts`) is the only thing that has ever touched the real
+ * adapter, and it has never been run; that absence is `P-2` in
+ * `openspec/changes/requirements-baseline/PROBLEMS.md`. Injecting the SDK client
+ * — mirroring `src/messaging/whatsapp.ts`, which accepts injected credentials and
+ * `fetch` — is what would turn all four into real citations.
  */
 
 let seq = 0;
