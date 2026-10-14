@@ -5,7 +5,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
@@ -17,6 +17,6 @@
     "sourceMap": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["scripts/**/*.ts"],
   "exclude": ["node_modules", "dist", "tests"]
 }

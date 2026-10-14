@@ -53,9 +53,10 @@ export type GateOptions = {
   testGlobs?: string[];
   /**
    * Additional files that carry requirement citations as `// ID` comments.
-   * `scripts/verify-e2e.ts` is a real end-to-end check that cannot run under
-   * vitest (it needs a real socket for the SSE route), so its assertions count
-   * as evidence too.
+   * The default is empty: this change ships the gate and the baseline index,
+   * not the product test suite, so the only evidence the gate can see is the
+   * tests under `testsDir`. A follow-on change that delivers non-vitest checks
+   * (e.g. an e2e script needing a real socket) passes them here.
    */
   citationSources?: string[];
 };
@@ -103,8 +104,7 @@ export function resolveOptions(options: GateOptions = {}): ResolvedOptions {
     excludeTestFiles: options.excludeTestFiles ?? ['spec-gate.test.ts'],
     // Kept in step with `vitest.config.ts`'s `include`.
     testGlobs: options.testGlobs ?? ['**/*.test.ts'],
-    citationSources:
-      options.citationSources ?? [path.join(repoRoot, 'scripts/verify-e2e.ts')],
+    citationSources: options.citationSources ?? [],
   };
 }
 
@@ -760,9 +760,11 @@ export function runGate(options: GateOptions = {}): GateResult {
   for (const d of testDeclarations) declarationAt.set(`${d.file}:${d.line}`, d);
 
   const runsActually = check('every citing test actually runs');
-  // Citations from a non-vitest source (`scripts/verify-e2e.ts`) are `// ID`
-  // comments over real HTTP checks, not test declarations, so the structural
-  // rules cannot apply to them: `pnpm verify:e2e` runs them and fails loudly.
+  // Citations from a non-vitest source (an entry in `citationSources`) are
+  // `// ID` comments over checks the runner cannot execute, not test
+  // declarations, so the structural rules cannot apply to them: whatever runs
+  // those checks is responsible for failing loudly. Nothing is listed by
+  // default in this change, so every citation here must be a real declaration.
   const isTestDeclarationCitation = (c: TestCitation): boolean =>
     !opts.citationSources.some((source) => path.relative(opts.repoRoot, source) === c.file);
   const testIsEvidence = (c: TestCitation): boolean => {

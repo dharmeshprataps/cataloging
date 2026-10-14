@@ -3,31 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "WhatsApp Business bot that turns garment photos into AI model catalog shots for small designer brands",
+  "description": "Traceability gate for the requirements baseline: keeps the specification and the test suite from drifting apart",
   "packageManager": "pnpm@11.7.0",
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
-    "dev": "tsx watch src/main.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
     "test": "./test.sh run && tsx scripts/spec-status.ts",
     "test:watch": "./test.sh",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
-    "verify:e2e": "tsx scripts/verify-e2e.ts",
-    "smoke:gemini": "tsx scripts/smoke-gemini.ts",
+    "build": "tsc -p tsconfig.json",
     "spec:verify": "tsx scripts/spec-status.ts",
     "spec:status": "tsx scripts/spec-status.ts",
     "spec:sync": "tsx scripts/sync-traceability.ts"
-  },
-  "dependencies": {
-    "@google/genai": "2.29.0",
-    "dotenv": "^18.0.7",
-    "fastify": "^5.12.7",
-    "pino": "^10.4.0",
-    "pino-pretty": "^13.2.0",
-    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

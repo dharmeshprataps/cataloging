@@ -32,6 +32,20 @@ import {
 
 const tmpRoots: string[] = [];
 
+const tracePath = (root: string) =>
+  path.join(root, 'openspec', 'changes', changeId, 'traceability.yaml');
+const readTrace = (root: string) => fs.readFileSync(tracePath(root), 'utf8');
+const writeTrace = (root: string, text: string) => fs.writeFileSync(tracePath(root), text);
+
+/** Replaces the whole `ID: { ... }` line for a requirement. */
+function setEntry(root: string, id: string, body: string): void {
+  const next = readTrace(root).replace(
+    new RegExp(`^  ${id}: \\{.*\\}$`, 'm'),
+    `  ${id}: { ${body} }`,
+  );
+  writeTrace(root, next);
+}
+
 afterAll(() => {
   for (const root of tmpRoots) {
     fs.rmSync(root, { recursive: true, force: true });
@@ -51,63 +65,101 @@ function fixture(options: { approveSpec?: boolean; statusRow?: string } = {}): {
   fs.mkdirSync(path.join(root, path.dirname(changeRel)), { recursive: true });
   fs.cpSync(real.specDir, path.join(root, changeRel), { recursive: true });
   fs.cpSync(real.testsDir, path.join(root, 'tests'), { recursive: true });
-  // The e2e script is a citation source, so the fixture must include it or the
-  // fixture would fail for a reason that does not apply to the real project.
+  // Fixture tree for the non-vitest citation path (`citationSources`). The real
+  // repository has no such source in this change — the e2e script that needed a
+  // real socket belongs to the follow-on test change — so the fixture supplies
+  // its own. Writing it here rather than copying a real file is deliberate: the
+  // path must exist even on the branch that ships only the gate, or every
+  // fixture would fail for a reason that does not apply to the gate itself.
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
-  fs.copyFileSync(
-    path.join(real.repoRoot, 'scripts', 'verify-e2e.ts'),
-    path.join(root, 'scripts', 'verify-e2e.ts'),
+  fs.writeFileSync(
+    path.join(root, 'scripts', 'e2e-checks.ts'),
+    ['// SIM-003', 'check(streams);', '// SIM-004', 'check(uploads);', ''].join('\n'),
   );
 
   const testsDir = path.join(root, 'tests');
   fs.rmSync(path.join(testsDir, 'spec-gate.test.ts'), { force: true });
 
-  // The real `spec.md` is still a DRAFT (that is the point of the approval
-  // check), so the fixture approves its copy by default. Every falsification
-  // test below then starts from a tree that passes, and breaks exactly one
-  // thing — otherwise the fixture's own unapproved spec would mask the result.
-  if (options.approveSpec !== false) {
+  // The real `spec.md` is APPROVED, so the fixture's copy already is. Tests that
+  // probe the approval rules rewrite the copy themselves.
+  if (options.approveSpec === false) {
     const specPath = path.join(root, changeRel, 'spec.md');
-    const withStatus = options.statusRow
-      ? fs
-          .readFileSync(specPath, 'utf8')
-          .replace(/^\| \*\*Status\*\* \|.*\|$/m, options.statusRow)
-      : fs.readFileSync(specPath, 'utf8');
     fs.writeFileSync(
       specPath,
-      withStatus
-        .replace(/^\| \*\*Status\*\* \|.*\|$/m, '| **Status** | APPROVED |')
-        .replace(/^\| \*\*Approved by\*\* \|.*\|$/m, '| **Approved by** | Fixture Approver |'),
+      fs
+        .readFileSync(specPath, 'utf8')
+        .replace(/^\| \*\*Status\*\* \|.*\|$/m, '| **Status** | DRAFT — awaiting human approval |')
+        .replace(/^\| \*\*Approved by\*\* \|.*\|$/m, '| **Approved by** | — |'),
     );
   }
 
+  // The real change ships the baseline and the gate, not the product suite, so
+  // its own tree fails the coverage check. Every falsification test below needs
+  // to start from a tree that passes and break exactly one thing, so seed one
+  // asserting test per implemented requirement. Those requirements are then
+  // genuinely covered *in the fixture*, which is what makes "break one rule"
+  // observable.
+  seedCoverage(root, changeRel);
+
   tmpRoots.push(root);
-  // `citationSources` must point at the fixture's copy of the e2e script.
-  // Leaving the default in place would fall back to the real repository's
-  // script, so a fixture that broke that file's citations would still pass.
+  // `citationSources` must point at the fixture's own copy. Leaving the default
+  // in place would fall back to the real repository's sources, so a fixture that
+  // broke a citation in its copy would still pass.
   return {
     root,
     opts: {
       repoRoot: root,
       excludeTestFiles: [],
-      citationSources: [path.join(root, 'scripts', 'verify-e2e.ts')],
+      citationSources: [path.join(root, 'scripts', 'e2e-checks.ts')],
     },
     testsDir,
   };
 }
 
-const tracePath = (root: string) =>
-  path.join(root, 'openspec', 'changes', changeId, 'traceability.yaml');
-const readTrace = (root: string) => fs.readFileSync(tracePath(root), 'utf8');
-const writeTrace = (root: string, text: string) => fs.writeFileSync(tracePath(root), text);
+/**
+ * Gives every implemented requirement a test that cites it, so the fixture
+ * starts with zero coverage violations. `CONV-001` lands in a named file that
+ * tests can edit; the rest are generated.
+ */
+function seedCoverage(root: string, changeRel: string): void {
+  const doc = parseYaml(fs.readFileSync(path.join(root, changeRel, 'traceability.yaml'), 'utf8'));
+  const reqs = (doc.requirements ?? {}) as Record<string, Record<string, unknown>>;
 
-/** Replaces the whole `ID: { ... }` line for a requirement. */
-function setEntry(root: string, id: string, body: string): void {
-  const next = readTrace(root).replace(
-    new RegExp(`^  ${id}: \\{.*\\}$`, 'm'),
-    `  ${id}: { ${body} }`,
-  );
-  writeTrace(root, next);
+  const seedName = 'product.test.ts';
+  const seed: string[] = [
+    "import { expect, it } from 'vitest';",
+    "it('CONV-001 stages are formally enumerated', () => { expect(1).toBe(1); });",
+  ];
+  const generated: string[] = ["import { expect, it } from 'vitest';"];
+
+  for (const [id, meta] of Object.entries(reqs)) {
+    const implementation = String(meta.implementation ?? 'implemented');
+    if (implementation !== 'implemented' && implementation !== 'partial') continue;
+    setEntry(
+      root,
+      id,
+      `file: requirements, title: ${String(meta.title ?? id)}, verification: unverified, gap: fixture seeded for coverage, tests: [${id}]`,
+    );
+    if (id === 'CONV-001') continue;
+    generated.push(`it('${id} is covered by this fixture', () => { expect(1).toBe(1); });`);
+  }
+
+  const testsDir = path.join(root, 'tests');
+  fs.writeFileSync(path.join(testsDir, seedName), `${seed.join('\n')}\n`);
+  fs.writeFileSync(path.join(testsDir, 'generated.test.ts'), `${generated.join('\n')}\n`);
+
+  // The fixture's citation source cites two ids, so declare exactly the counts
+  // the tree now produces — otherwise the "clean tree" fixture would trip the
+  // declared-count check, which exists to catch a real mismatch.
+  for (const id of ['SIM-003', 'SIM-004']) {
+    const meta = reqs[id];
+    if (!meta) continue;
+    setEntry(
+      root,
+      id,
+      `file: requirements, title: ${String(meta.title ?? id)}, verification: unverified, gap: fixture seeded for coverage, tests: [${id}, ${id}]`,
+    );
+  }
 }
 
 /**
@@ -161,19 +213,20 @@ describe('YAML reader', () => {
 describe('gate against the real project', () => {
   const result = runGate();
 
-  it('has no violations other than the unapproved specification', () => {
+  it('has no violations other than the coverage the follow-on change supplies', () => {
     const failures = result.checks.filter(
       (c) => c.severity === 'error' && c.violations.length > 0,
     );
-    // The specification in this repository is still a DRAFT, so the approval
-    // check is *supposed* to fail — that is the gate enforcing `AGENTS.md`
-    // ("do not implement until the specification has an explicit APPROVED
-    // marker") against its own change. Every other check must be clean.
+    // The specification is APPROVED and every other rule holds, but this change
+    // deliberately ships the baseline and the gate without the product suite, so
+    // 153 implemented requirements have no test citing them here. That is the
+    // gate reading the tree correctly, and it is the one thing the
+    // `expand-test-coverage` change turns green. Anything else failing would
+    // mean the gate or the baseline drifted.
     expect(failures.map((c) => c.name)).toEqual([
-      'the specification is APPROVED by a named approver',
+      'every implemented requirement is covered by at least one test',
     ]);
-    // And it must fail for the approval reason, not an incidental one.
-    expect(failures[0]!.violations.join('\n')).toMatch(/Status is 'DRAFT/);
+    expect(failures[0]!.violations).toHaveLength(153);
   });
 
   it('marks the requirements no test proves as unverified rather than verified', () => {
@@ -260,7 +313,7 @@ describe('gate fails when it should', () => {
   it('detects an implemented requirement with no test citing it', () => {
     const { root, opts } = fixture();
     // Remove CONV-001's citation from the test that names it.
-    const testPath = path.join(root, 'tests', 'pipeline.test.ts');
+    const testPath = path.join(root, 'tests', 'product.test.ts');
     const original = fs.readFileSync(testPath, 'utf8');
     const withoutCitation = original.replace(
       /it\('CONV-001 /,
@@ -278,10 +331,20 @@ describe('gate fails when it should', () => {
   it('detects a requirement claimed as verified without a citing test', () => {
     const { root, opts } = fixture();
 
-    // Remove every piece of evidence for SIM-003, then leave the requirement
-    // claiming it is verified. That combination is the false-claim failure mode
-    // the gate exists to catch.
-    const scriptPath = path.join(root, 'scripts', 'verify-e2e.ts');
+    // Remove every piece of evidence for SIM-003 — the vitest citation and the
+    // citation-source comment — then leave the requirement claiming it is
+    // verified. That combination is the false-claim failure mode the gate
+    // exists to catch.
+    const generatedPath = path.join(root, 'tests', 'generated.test.ts');
+    fs.writeFileSync(
+      generatedPath,
+      fs
+        .readFileSync(generatedPath, 'utf8')
+        .split('\n')
+        .filter((line) => !line.includes("it('SIM-003 "))
+        .join('\n'),
+    );
+    const scriptPath = path.join(root, 'scripts', 'e2e-checks.ts');
     fs.writeFileSync(
       scriptPath,
       fs.readFileSync(scriptPath, 'utf8').replace(/^\s*\/\/\s*SIM-003\s*$/m, '  // citation removed'),
@@ -462,10 +525,16 @@ describe('gate refuses an unapproved specification', () => {
 describe('gate cannot be satisfied by a test that does not run', () => {
   it('detects a whole suite wrapped in describe.skip', () => {
     const { root, opts } = fixture();
-    const testPath = path.join(root, 'tests', 'pipeline.test.ts');
+    // Claim CONV-002 is verified, then make the suite that cites it skipped.
+    setEntry(
+      root,
+      'CONV-002',
+      'file: requirements, title: Terminal sessions are not resumed, verification: verified, gap: seeded as verified for this probe, tests: [CONV-002]',
+    );
+    const testPath = path.join(root, 'tests', 'generated.test.ts');
     const original = fs.readFileSync(testPath, 'utf8');
     // Wrap the entire file in a skipped suite: the inner `it` calls keep their
-    // CONV-001 citation, so a text-only gate reports full coverage.
+    // citations, so a text-only gate reports full coverage.
     const wrapped = `describe.skip('skipped wholesale', () => {\n${original}\n});\n`;
     fs.writeFileSync(testPath, wrapped);
 
@@ -474,7 +543,7 @@ describe('gate cannot be satisfied by a test that does not run', () => {
       'skipped suite',
     );
     expect(findCheck(result, 'marked verified actually has a citing test')?.violations.join('\n')).toContain(
-      'CONV-001',
+      'CONV-002',
     );
   });
 
