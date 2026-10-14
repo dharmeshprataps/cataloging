@@ -283,5 +283,5 @@ revise this specification.
 
 Status: APPROVED — approved by Dharmesh Pratap Singh on 2026-10-14
 (`/approve` on https://github.com/dharmeshprataps/cataloging/pull/2#issuecomment-6173700774).
-Recorded here by the implementation agent; §1–§11 are unmodified from the
+Recorded here by the implementation agent; §1–§12 are unmodified from the
 reviewed revision.
