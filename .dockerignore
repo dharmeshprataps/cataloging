@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.gitignore
+data
+*.log
+.env
+.env.local
+tests
+scripts
+docs
+coverage
+run.sh
+test.sh
+vitest.config.ts
+README.md
