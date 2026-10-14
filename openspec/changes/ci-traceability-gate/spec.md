@@ -24,7 +24,7 @@
 | **Approval record** | `/approve` on https://github.com/dharmeshprataps/cataloging/issues/4#issuecomment-6174542684 (2026-10-14T17:41:36Z), answering the discovery questions at [#issuecomment-6174492546](https://github.com/dharmeshprataps/cataloging/issues/4#issuecomment-6174492546). The operator later confirmed, in session, (a) that this specification may be authored and its `Status: APPROVED` recorded from that `/approve`, and (b) that the change is stacked on PR #6 rather than absorbing it. |
 | **Issue** | https://github.com/dharmeshprataps/cataloging/issues/4 |
 | **Branch** | `agent/ci-traceability-gate`, based on `agent/requirements-baseline-findings` (`ca7c528`) |
-| **Revised** | 2026-10-14 — §2, §3 (AC-5), §4 (D6), §6 and §9 amended during implementation: CI enforcement became baseline requirement `TOOL-003` after the traceability gate rejected the new test file for citing no requirement, and the baseline's counts moved with it. §1, §5, §7 and §8 are unchanged. The revision is recorded rather than silent because it changes the change's outputs, not its acceptance criteria. |
+| **Revised** | 2026-10-14 — §2, §3 (AC-5 plus the status note), §4 (D6), §6, §7 and §9 amended during implementation: CI enforcement became baseline requirement `TOOL-003` after the traceability gate rejected the new test file for citing no requirement, the baseline's counts moved with it, and GitHub Actions was found to be unable to start a job on this account (billing lock), which blocks the run-sourced half of AC-2, AC-3 and AC-6. §1 and §5 are unchanged. The revision is recorded rather than silent because it changes the change's outputs and its evidence, not its acceptance criteria. |
 
 > **This change adds a workflow and the tests that hold it in place. It changes no
 > product code, no gate rule, and no requirement's verification class.** Its whole
@@ -105,6 +105,12 @@ than asserted.
 | AC-4 | **No unexecuted sole evidence.** `SIM-003`'s only citation is executed by the workflow. | The `e2e` job runs `scripts/verify-e2e.ts`, the gate's `citationSources` entry that carries the `// SIM-003` comment. `tests/ci-workflow.test.ts` mechanises the rule: any citation source outside the suite that carries a `// ID` comment and is not executed by the workflow fails the suite. |
 | AC-5 | **Honest bookkeeping.** The change records which baseline statements it supersedes, and leaves §10's "prose counts match the index" declared manual. | §6; `requirements-baseline/README.md` limitation 3 and `requirements-baseline/spec.md` §9/§10 edited. §10's prose-counts row is untouched. The counts this change moves are reconciled through `TOOL-003` (D6). |
 | AC-6 | **Reproducible results.** The PR body cites the workflow run URL for the same head SHA it claims, not only local output. | PR body; §7. |
+
+**Status at this revision.** The code for every criterion is in place, but the
+run-sourced half of AC-2, AC-3 and AC-6 is **not demonstrated**: GitHub Actions
+cannot start a job on this account (billing lock, §7.1). Those three criteria are
+blocked on a human action, not on work in this branch. AC-1, AC-4 and AC-5 are
+demonstrated as described.
 
 ---
 
@@ -223,25 +229,72 @@ change records the dependency rather than duplicating the fix.
 
 ---
 
-## 7. Evidence
+## 7. Evidence, and the CI blocker
 
-Filled from the workflow itself, not from a local run. The final revision of this
-section is committed before the pull request is marked ready, and the PR body cites
-the same run against the same head SHA.
+### 7.1 The blocker: GitHub Actions cannot start on this account
 
-| What | Where |
+The workflow is accepted and the run is created — GitHub resolved it into all four
+jobs, `typecheck`, `build`, `test` and `e2e`, which is evidence the file parses and
+that the jobs are wired as designed. **No job starts**, and the annotation on every
+one of them is:
+
+> The job was not started because your account is locked due to a billing issue.
+
+Run: https://github.com/dharmeshprataps/cataloging/actions/runs/38610193975
+
+This is account-wide and predates this change. The repository's only other
+workflow, `agent-policy.yml`, has failed the same way on every pull request since
+before this branch existed — for example run
+https://github.com/dharmeshprataps/cataloging/actions/runs/38608107318 on PR #3,
+which was merged while its own policy check could not run. No workflow in this
+repository has ever executed.
+
+**Consequences, stated rather than worked around:**
+
+| Criterion | State |
 |---|---|
-| Green run at the head SHA | *(recorded in the PR body and here once the run completes)* |
-| Falsification: broken citation commit, failing run URL, exact violation | *(recorded after the probe)* |
-| Revert commit, and the green run that follows it | *(recorded after the revert)* |
+| AC-2, green run at the adding PR's head SHA | **Not satisfied.** Blocked by the billing lock. |
+| AC-3, failing workflow run URL for the probe | **Not satisfied.** The probe's effect is recorded locally below; a run URL needs Actions to start. |
+| AC-6, the PR body cites a run URL for its head SHA | **Not satisfied.** The PR body records the blocker instead. |
 
-**Falsification plan (AC-3).** Remove the `// SIM-003` comment from
-`scripts/verify-e2e.ts` — the citation the gate accepts as sole evidence for a
-`verified` requirement — and leave the traceability index claiming `verified`. That
-is the exact false-claim failure mode the gate exists to catch, and the same probe
-`tests/spec-gate.test.ts` uses in its own fixture. The `test` job must go red with
-`SIM-003` named in the gate report, while `typecheck`, `build` and `e2e` stay green
-— which is the point of D1. The probe is then reverted.
+Clearing the lock is a human action on the account; an agent must not attempt it.
+Once Actions can start, the probe must be pushed as a commit and its red run
+recorded, and this section replaced with the run URLs.
+
+### 7.2 Local verification at `14ad34b`
+
+```
+typecheck    tsc --noEmit -p tsconfig.check.json   clean
+build        tsc -p tsconfig.json                  ok
+test         vitest 15 files, 256 tests pass; gate RESULT: PASS
+             (0 warning(s)) — 159 requirements, 152 verified,
+             4 unverified, 3 n/a
+verify:e2e   all checks pass (real HTTP, faked boundaries)
+```
+
+### 7.3 Falsification (AC-3), run locally
+
+Removing the `// SIM-003` comment from `scripts/verify-e2e.ts` while leaving the
+index claiming `verified` — the exact false-claim failure mode the gate exists to
+catch, and the probe `tests/spec-gate.test.ts` uses in its own fixture — produces:
+
+```
+[FAIL] every implemented requirement is covered by at least one test (1)
+         - SIM-003 (implemented): no test cites it — add a test or mark it unverified
+[FAIL] every requirement marked verified actually has a citing test (1)
+         - SIM-003: verification is 'verified' but no test cites it
+[FAIL] declared test citations match the tests that cite them (1)
+         - SIM-003: traceability.yaml declares 1 test(s) but 0 test title(s) cite it
+RESULT: FAIL — 3 error(s)
+```
+
+`pnpm test` also fails, because `tests/spec-gate.test.ts` has two tests that assert
+the real tree passes. The comment was then restored; the tree is clean and the gate
+returns to PASS. This is also the concrete reason for D5: moving that citation would
+have required editing those two tests.
+
+The probe was not pushed as a commit. A pushed probe would produce a red run for
+the billing reason rather than for the citation, which is the opposite of evidence.
 
 ---
 

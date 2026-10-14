@@ -46,8 +46,10 @@ This branch is based on PR #6's head and its pull request targets that branch.
 2. Read `.github/workflows/ci.yml` and check it against the four required checks.
 3. Run `./run.sh pnpm test`; `tests/ci-workflow.test.ts` should be the only new
    file in the results.
-4. Confirm the falsification evidence in §7: the broken citation commit, the red
-   run, and the revert.
+4. Check the evidence in §7. **The workflow's own runs are blocked**: GitHub cannot
+   start a job on this account ("locked due to a billing issue"), which also
+   affects the pre-existing `agent-policy.yml`. §7 records that limitation, the
+   local verification, and the locally-run falsification.
 5. Check §6 against the baseline's own text: limitation 3 and §9/§10 should read
    as superseded, and §10's "prose counts match the index" row must still be
    declared manual.
