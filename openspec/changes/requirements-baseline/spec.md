@@ -1,15 +1,25 @@
 # Specification — Requirement baseline and traceability gate
 
-**Change ID:** `requirements-baseline`
+| Field | Value |
+|---|---|
+| **ID** | `SPEC-REQ-BASELINE` |
+| **Title** | Requirement baseline and traceability convention |
+| **Change** | `requirements-baseline` |
+| **Owner** | Dharmesh Pratap Singh (operator) |
+| **Status** | DRAFT — awaiting human approval |
+| **Created** | 2026-10-14 |
+| **Last modified** | 2026-10-14 |
+| **Source classification** | MIXED |
+| **Confidence** | MODERATE |
+| **Supersedes** | — |
+| **Superseded by** | — |
+| **Dependencies** | `requirements.md`, `PROBLEMS.md`, `decisions/`, `findings/` |
 
 | Field | Value |
 |---|---|
 | **Spec** | `openspec/changes/requirements-baseline/spec.md` |
 | **Author** | DSH implementation agent (session on `dharmeshprats/cataloging`) |
-| **Status** | DRAFT — awaiting human approval |
-| **Created** | 2026-10-14 |
 | **Approved by** | — |
-| **Depends on** | nothing |
 
 > **This specification is documentation only.** It establishes the requirement
 > baseline and the traceability convention for the existing system. It contains

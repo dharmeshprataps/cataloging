@@ -15,159 +15,159 @@ version: 1
 change: requirements-baseline
 
 requirements:
-  CONV-001: { file: conversation, title: Stages are formally enumerated, tests: [CONV-001] }
-  CONV-002: { file: conversation, title: Terminal sessions are not resumed, tests: [CONV-002] }
-  CONV-003: { file: conversation, title: An idle user is asked for garment photos, tests: [CONV-003] }
-  CONV-004: { file: conversation, title: Duplicate deliveries are suppressed before any work, tests: [CONV-004, CONV-004] }
-  CONV-005: { file: conversation, title: A confirmed brief returns to review, tests: [CONV-005] }
-  CONV-006: { file: conversation, title: Review accepts numbered commands, tests: [CONV-006, CONV-006] }
-  CONV-007: { file: conversation, title: Review accepts named commands and the go alias, tests: [CONV-007] }
-  CONV-008: { file: conversation, title: Review commands require an existing output, implementation: deferred, finding: PRB-0003, verification: n/a, tests: [] }
-  CONV-009: { file: conversation, title: Unrecognised review text is revision feedback, tests: [CONV-009, CONV-009] }
-  CONV-010: { file: conversation, title: Pleasantries are not instructions, tests: [CONV-010, CONV-010] }
-  CONV-011: { file: conversation, title: Revisions preserve fidelity through chaining, tests: [CONV-011] }
-  CONV-012: { file: conversation, title: Variation prompts are pairwise distinct, tests: [CONV-012] }
-  CONV-013: { file: conversation, title: details returns the current brief, tests: [CONV-013] }
-  CONV-014: { file: conversation, title: cancel terminates the item, tests: [CONV-014] }
-  CONV-015: { file: conversation, title: Approval records the item and acknowledges it, tests: [CONV-015] }
-  CONV-016: { file: conversation, title: New photos during review start a new item, tests: [CONV-016] }
-  CONV-017: { file: conversation, title: SKUs are captured from free text, tests: [CONV-017] }
-  CONV-018: { file: conversation, title: An explicit reset works from any stage, tests: [CONV-018] }
-  CONV-019: { file: conversation, title: The word new is not misread mid-flow, tests: [CONV-019] }
-  CONV-020: { file: conversation, title: State survives process restart, finding: PRB-0003, tests: [CONV-020] }
-  UX-001: { file: conversation, title: help returns the workflow, tests: [UX-001] }
-  UX-002: { file: conversation, title: Greeting is available from idle, tests: [UX-002] }
-  UX-003: { file: conversation, title: No turn ends in silence, finding: PRB-0003, tests: [UX-003] }
-  UX-004: { file: conversation, title: Failure messages are actionable, tests: [UX-004, UX-004] }
-  UX-005: { file: conversation, title: Long work is acknowledged before it starts, tests: [UX-005] }
-  BATCH-001: { file: conversation, title: Bursty sends assemble into one turn, tests: [BATCH-001, BATCH-001] }
-  BATCH-002: { file: conversation, title: Three photos produce one acknowledgement, tests: [BATCH-002, BATCH-002] }
-  BATCH-003: { file: conversation, title: Buffers are independent per contact, tests: [BATCH-003] }
-  BATCH-004: { file: conversation, title: Text is acted on only for the last message, tests: [BATCH-004] }
-  BATCH-005: { file: conversation, title: Duplicates within one batch are suppressed, tests: [BATCH-005] }
-  BATCH-006: { file: conversation, title: An empty batch is a no-op, tests: [BATCH-006] }
-  BATCH-007: { file: conversation, title: The window opens fresh after closing, tests: [BATCH-007] }
-  BATCH-008: { file: conversation, title: Flush releases buffered items immediately, tests: [BATCH-008] }
-  BATCH-009: { file: conversation, title: Every waiting caller receives the batch once, tests: [BATCH-009] }
-  BATCH-010: { file: conversation, title: Keys are isolated and unknown-key flush is a no-op, tests: [BATCH-010] }
-  BRIEF-001: { file: conversation, title: Free-form text becomes a validated brief, tests: [BRIEF-001] }
-  BRIEF-002: { file: conversation, title: The brief schema constrains the domain, tests: [BRIEF-002] }
-  BRIEF-003: { file: conversation, title: The model field is constrained to a synthetic person, tests: [BRIEF-003] }
-  BRIEF-004: { file: conversation, title: Defaults are tasteful and commercially safe, tests: [BRIEF-004] }
-  BRIEF-005: { file: conversation, title: The brief is confirmed before any generation, tests: [BRIEF-005] }
-  BRIEF-006: { file: conversation, title: Corrections do not lose the original request, finding: PRB-0003, tests: [BRIEF-006] }
-  BRIEF-007: { file: conversation, title: The brief determines aspect ratio and image size, tests: [BRIEF-007, BRIEF-007] }
-  GEN-001: { file: generation, title: Generation goes through the Gemini interactions API, tests: [GEN-001] }
-  GEN-002: { file: generation, title: The pipeline depends on an interface not on Gemini, tests: [GEN-002] }
-  GEN-003: { file: generation, title: The prompt is composed from separable layers, tests: [GEN-003, GEN-003, GEN-003, GEN-003, GEN-003] }
-  GEN-004: { file: generation, title: The model must reproduce the garment faithfully, tests: [GEN-004] }
-  GEN-005: { file: generation, title: Added text and watermarks are forbidden, tests: [GEN-005, GEN-005] }
-  GEN-006: { file: generation, title: Reference images are supplied to the provider, finding: PRB-0003, tests: [GEN-006] }
-  GEN-007: { file: generation, title: Reference count is capped, finding: PRB-0003, tests: [GEN-007] }
-  GEN-008: { file: generation, title: A transient failure is retried with backoff, finding: PRB-0003, tests: [GEN-008] }
-  GEN-009: { file: generation, title: A content-policy refusal is never retried, tests: [GEN-009] }
-  GEN-010: { file: generation, title: Generation is bounded by a timeout, finding: PRB-0003, tests: [GEN-010] }
-  GEN-011: { file: generation, title: The interaction id is captured for edits, finding: PRB-0003, tests: [GEN-011, GEN-011] }
-  GEN-012: { file: generation, title: Generation outcomes are recorded, tests: [GEN-012, GEN-012, GEN-012] }
-  GEN-013: { file: generation, title: A failed revision returns to review, tests: [GEN-013, GEN-013] }
-  GEN-014: { file: generation, title: A failed first generation returns to confirm_brief, tests: [GEN-014, GEN-014] }
-  GEN-015: { file: generation, title: Aspect ratio and image size come from the brief, finding: PRB-0003, tests: [GEN-015] }
-  GEN-016: { file: generation, title: A successful generation is delivered to the user, tests: [GEN-016, GEN-016] }
-  ITER-001: { file: generation, title: A revision is a chained edit, tests: [ITER-001] }
-  ITER-002: { file: generation, title: A variation does not chain, tests: [ITER-002, ITER-002] }
-  ITER-003: { file: generation, title: Revision and variation are mutually exclusive, tests: [ITER-003, ITER-003] }
-  ITER-004: { file: generation, title: Variation notes are distinct and cycle safely, tests: [ITER-004] }
-  ITER-005: { file: generation, title: A revision instruction is preserved verbatim, tests: [ITER-005, ITER-005] }
-  MED-001: { file: generation, title: Media is sniffed never trusted, tests: [MED-001] }
-  MED-002: { file: generation, title: PNG dimensions are parsed from the header, tests: [MED-002] }
-  MED-003: { file: generation, title: JPEG dimensions are parsed from the SOF header, tests: [MED-003, MED-003] }
-  MED-004: { file: generation, title: WebP is accepted, finding: PRB-0003, tests: [MED-004, MED-004, MED-004] }
-  MED-005: { file: generation, title: Oversized payloads are rejected before any API call, tests: [MED-005] }
-  MED-006: { file: generation, title: Unrecognised bytes are rejected safely, tests: [MED-006, MED-006] }
-  MED-007: { file: generation, title: Empty payloads are rejected, tests: [MED-007] }
-  MED-008: { file: generation, title: Undersized images are rejected, tests: [MED-008] }
-  MED-009: { file: generation, title: A truncated but identifiable image is classified, tests: [MED-009] }
-  MED-010: { file: generation, title: Identical bytes are stored once, tests: [MED-010] }
-  MED-011: { file: generation, title: Cost per size is estimated for logging, tests: [MED-011] }
-  WA-001: { file: channels, title: The verification handshake is honoured, tests: [WA-001] }
-  WA-002: { file: channels, title: An incorrect verify token is refused, tests: [WA-002] }
-  WA-003: { file: channels, title: Every payload is signature verified over raw bytes, tests: [WA-003, WA-003, WA-003, WA-003] }
-  WA-004: { file: channels, title: A missing signature header is rejected, tests: [WA-004] }
-  WA-005: { file: channels, title: A signature from another secret is rejected, tests: [WA-005] }
-  WA-006: { file: channels, title: Malformed signatures are rejected without throwing, tests: [WA-006] }
-  WA-007: { file: channels, title: Inbound text messages are normalised, tests: [WA-007] }
-  WA-008: { file: channels, title: Inbound image messages keep their caption, tests: [WA-008] }
-  WA-009: { file: channels, title: Outbound sends respect the 24-hour service window, implementation: not_implemented, verification: n/a, finding: PRB-0001, tests: [] }
-  WA-010: { file: channels, title: Interactive button replies are normalised, tests: [WA-010] }
-  WA-011: { file: channels, title: Unsupported message types are ignored, tests: [WA-011] }
-  WA-012: { file: channels, title: Delivery statuses are processed separately, tests: [WA-012, WA-012] }
-  WA-013: { file: channels, title: A failed status surfaces its error detail, tests: [WA-013] }
-  WA-014: { file: channels, title: A malformed payload yields empty results, tests: [WA-014] }
-  WA-015: { file: channels, title: Outbound text goes through the Cloud API, finding: PRB-0003, tests: [WA-015, WA-015, WA-015, WA-015] }
-  WA-016: { file: channels, title: Outbound images are uploaded before being referenced, finding: PRB-0003, tests: [WA-016, WA-016, WA-016] }
-  WA-017: { file: channels, title: Inbound media is fetched in two authenticated hops, finding: PRB-0003, tests: [WA-017, WA-017, WA-017] }
-  WA-018: { file: channels, title: The API version is pinned by configuration, finding: PRB-0003, tests: [WA-018] }
-  WA-019: { file: channels, title: Read receipts are best effort, implementation: partial, gap: markRead is implemented but nothing calls it, finding: PRB-0001, tests: [WA-019, WA-019] }
-  WA-020: { file: channels, title: Outbound deliveries are recorded, finding: PRB-0003, tests: [WA-020] }
-  SIM-001: { file: channels, title: The product runs locally with no Meta account, tests: [SIM-001, SIM-001] }
-  SIM-002: { file: channels, title: A browser chat client is served, tests: [SIM-002] }
-  SIM-003: { file: channels, title: Bot replies are streamed to the client, finding: PRB-0003, tests: [SIM-003] }
-  SIM-004: { file: channels, title: Inbound images can be posted and are stored, tests: [SIM-004, SIM-004, SIM-004] }
-  SIM-005: { file: channels, title: Invalid inbound requests are rejected with a reason, tests: [SIM-005, SIM-005, SIM-005, SIM-005] }
-  SIM-006: { file: channels, title: Simulator hosted bytes are retrievable, finding: PRB-0003, tests: [SIM-006, SIM-006] }
-  SIM-007: { file: channels, title: The catalog is listed for the UI, tests: [SIM-007, SIM-007] }
-  SIM-008: { file: channels, title: A non-simulator channel does not serve the UI, finding: PRB-0003, tests: [SIM-008] }
-  SIM-009: { file: channels, title: Simulator and WhatsApp namespaces are separate, tests: [SIM-009] }
-  PERSIST-001: { file: platform, title: SQLite via the built-in driver, finding: PRB-0003, tests: [PERSIST-001] }
-  PERSIST-002: { file: platform, title: The schema covers every domain entity, finding: PRB-0003, tests: [PERSIST-002, PERSIST-002] }
-  PERSIST-003: { file: platform, title: Schema application is idempotent, finding: PRB-0003, tests: [PERSIST-003, PERSIST-003] }
-  PERSIST-004: { file: platform, title: Repository methods are typed and constrained, finding: PRB-0003, tests: [PERSIST-004, PERSIST-004, PERSIST-004] }
-  PERSIST-005: { file: platform, title: Session state is reloaded around every step, finding: PRB-0003, tests: [PERSIST-005] }
-  PERSIST-006: { file: platform, title: Asset bytes live in a blob store, finding: PRB-0003, tests: [PERSIST-006] }
-  PERSIST-007: { file: platform, title: The blob store is an interface, finding: PRB-0003, tests: [PERSIST-007] }
-  PERSIST-008: { file: platform, title: Blob keys cannot escape the storage root, finding: PRB-0003, tests: [PERSIST-008] }
-  PERSIST-009: { file: platform, title: Writes are atomic, finding: PRB-0003, tests: [PERSIST-009] }
-  PERSIST-010: { file: platform, title: Message identity is unique per channel id, tests: [PERSIST-010, PERSIST-010] }
-  CATALOG-001: { file: platform, title: Approving creates a product, tests: [CATALOG-001] }
-  CATALOG-002: { file: platform, title: Products carry their commercial fields, tests: [CATALOG-002] }
-  CATALOG-003: { file: platform, title: Assets link to products with an explicit role, tests: [CATALOG-003] }
-  CATALOG-004: { file: platform, title: The hero asset is a generated image, tests: [CATALOG-004] }
-  CATALOG-005: { file: platform, title: The current best output becomes the hero, finding: PRB-0003, tests: [CATALOG-005] }
-  CATALOG-006: { file: platform, title: Products are listed newest first, tests: [CATALOG-006] }
-  CATALOG-007: { file: platform, title: The catalog exports to CSV with the hero reference, tests: [CATALOG-007, CATALOG-007, CATALOG-007] }
-  CATALOG-008: { file: platform, title: CSV escaping is correct, finding: PRB-0003, tests: [CATALOG-008] }
-  CFG-001: { file: platform, title: Configuration is validated at boot, finding: PRB-0003, tests: [CFG-001, CFG-001] }
-  CFG-002: { file: platform, title: The channel is selected by configuration, tests: [CFG-002] }
-  CFG-003: { file: platform, title: Channel credentials are asserted before use, finding: PRB-0003, tests: [CFG-003] }
-  CFG-004: { file: platform, title: The image model is configurable, finding: PRB-0003, tests: [CFG-004] }
-  CFG-005: { file: platform, title: The text model is separately configurable, finding: PRB-0003, tests: [CFG-005] }
-  CFG-006: { file: platform, title: The batching window is configurable, tests: [CFG-006] }
-  CFG-007: { file: platform, title: Limits are configurable and bounded, finding: PRB-0003, tests: [CFG-007] }
-  CFG-008: { file: platform, title: Example configuration documents every variable, finding: PRB-0003, tests: [CFG-008] }
-  OBS-001: { file: platform, title: Structured logging suits each environment, finding: PRB-0003, tests: [OBS-001] }
-  OBS-002: { file: platform, title: A health endpoint checks dependencies, tests: [OBS-002] }
-  OBS-003: { file: platform, title: Health reports provider configuration state, finding: PRB-0003, tests: [OBS-003] }
-  OBS-004: { file: platform, title: Each generation logs latency cost and remaining budget, tests: [OBS-004] }
-  OBS-005: { file: platform, title: Failures are logged with diagnostic context, finding: PRB-0003, tests: [OBS-005] }
-  SEAM-001: { file: platform, title: The channel is an interface, tests: [SEAM-001] }
-  SEAM-002: { file: platform, title: The image engine is an interface, tests: [SEAM-002] }
-  SEAM-003: { file: platform, title: Implementations are chosen in one place, tests: [SEAM-003] }
-  SEAM-004: { file: platform, title: A missing key degrades safely, finding: PRB-0003, tests: [SEAM-004] }
-  SEAM-005: { file: platform, title: Simulator and WhatsApp share one pipeline, tests: [SEAM-005] }
-  SEC-001: { file: assurance, title: Inbound webhooks require a valid signature, tests: [SEC-001, SEC-001] }
-  SEC-002: { file: assurance, title: Signature comparison is constant time, tests: [SEC-002] }
-  SEC-003: { file: assurance, title: Secrets are never committed, finding: PRB-0003, tests: [SEC-003, SEC-003, SEC-003] }
-  SEC-004: { file: assurance, title: The webhook refuses without its secret, finding: PRB-0003, tests: [SEC-004] }
-  SEC-005: { file: assurance, title: Duplicate delivery cannot replay a turn, tests: [SEC-005] }
-  SEC-006: { file: assurance, title: Media and catalog endpoints are unauthenticated and must not be public, implementation: deferred, finding: PRB-0003, verification: n/a, tests: [SEC-006, SEC-006] }
-  SEC-007: { file: assurance, title: Unknown asset ids do not disclose anything, tests: [SEC-007] }
-  CONTENT-001: { file: assurance, title: Real identifiable people are prohibited, tests: [CONTENT-001] }
-  CONTENT-002: { file: assurance, title: Minors are prohibited, tests: [CONTENT-002] }
-  CONTENT-003: { file: assurance, title: The garment must not be restyled, tests: [CONTENT-003] }
-  CONTENT-004: { file: assurance, title: No added text or watermarks, tests: [CONTENT-004] }
-  CONTENT-005: { file: assurance, title: A refusal is a recoverable brief edit, tests: [CONTENT-005] }
-  COST-001: { file: assurance, title: Generations per item are capped, tests: [COST-001] }
-  COST-002: { file: assurance, title: No generation before brief confirmation, tests: [COST-002] }
-  COST-003: { file: assurance, title: Variation batches are bounded by budget, finding: PRB-0003, tests: [COST-003, COST-003] }
-  COST-004: { file: assurance, title: Per-call cost is estimated and persisted, tests: [COST-004] }
-  COST-005: { file: assurance, title: A batch does not multiply cost, tests: [COST-005] }
+  CONV-001: { file: requirements, title: Stages are formally enumerated, tests: [CONV-001] }
+  CONV-002: { file: requirements, title: Terminal sessions are not resumed, tests: [CONV-002] }
+  CONV-003: { file: requirements, title: An idle user is asked for garment photos, tests: [CONV-003] }
+  CONV-004: { file: requirements, title: Duplicate deliveries are suppressed before any work, tests: [CONV-004, CONV-004] }
+  CONV-005: { file: requirements, title: A confirmed brief returns to review, tests: [CONV-005] }
+  CONV-006: { file: requirements, title: Review accepts numbered commands, tests: [CONV-006, CONV-006] }
+  CONV-007: { file: requirements, title: Review accepts named commands and the go alias, tests: [CONV-007] }
+  CONV-008: { file: requirements, title: Review commands require an existing output, implementation: deferred, finding: F-001, verification: n/a, tests: [] }
+  CONV-009: { file: requirements, title: Unrecognised review text is revision feedback, tests: [CONV-009, CONV-009] }
+  CONV-010: { file: requirements, title: Pleasantries are not instructions, tests: [CONV-010, CONV-010] }
+  CONV-011: { file: requirements, title: Revisions preserve fidelity through chaining, tests: [CONV-011] }
+  CONV-012: { file: requirements, title: Variation prompts are pairwise distinct, tests: [CONV-012] }
+  CONV-013: { file: requirements, title: details returns the current brief, tests: [CONV-013] }
+  CONV-014: { file: requirements, title: cancel terminates the item, tests: [CONV-014] }
+  CONV-015: { file: requirements, title: Approval records the item and acknowledges it, tests: [CONV-015] }
+  CONV-016: { file: requirements, title: New photos during review start a new item, tests: [CONV-016] }
+  CONV-017: { file: requirements, title: SKUs are captured from free text, tests: [CONV-017] }
+  CONV-018: { file: requirements, title: An explicit reset works from any stage, tests: [CONV-018] }
+  CONV-019: { file: requirements, title: The word new is not misread mid-flow, tests: [CONV-019] }
+  CONV-020: { file: requirements, title: State survives process restart, tests: [CONV-020] }
+  UX-001: { file: requirements, title: help returns the workflow, tests: [UX-001] }
+  UX-002: { file: requirements, title: Greeting is available from idle, tests: [UX-002] }
+  UX-003: { file: requirements, title: No turn ends in silence, tests: [UX-003] }
+  UX-004: { file: requirements, title: Failure messages are actionable, tests: [UX-004, UX-004] }
+  UX-005: { file: requirements, title: Long work is acknowledged before it starts, tests: [UX-005] }
+  BATCH-001: { file: requirements, title: Bursty sends assemble into one turn, tests: [BATCH-001, BATCH-001] }
+  BATCH-002: { file: requirements, title: Three photos produce one acknowledgement, tests: [BATCH-002, BATCH-002] }
+  BATCH-003: { file: requirements, title: Buffers are independent per contact, tests: [BATCH-003] }
+  BATCH-004: { file: requirements, title: Text is acted on only for the last message, tests: [BATCH-004] }
+  BATCH-005: { file: requirements, title: Duplicates within one batch are suppressed, tests: [BATCH-005] }
+  BATCH-006: { file: requirements, title: An empty batch is a no-op, tests: [BATCH-006] }
+  BATCH-007: { file: requirements, title: The window opens fresh after closing, tests: [BATCH-007] }
+  BATCH-008: { file: requirements, title: Flush releases buffered items immediately, tests: [BATCH-008] }
+  BATCH-009: { file: requirements, title: Every waiting caller receives the batch once, tests: [BATCH-009] }
+  BATCH-010: { file: requirements, title: Keys are isolated and unknown-key flush is a no-op, tests: [BATCH-010] }
+  BRIEF-001: { file: requirements, title: Free-form text becomes a validated brief, tests: [BRIEF-001] }
+  BRIEF-002: { file: requirements, title: The brief schema constrains the domain, tests: [BRIEF-002] }
+  BRIEF-003: { file: requirements, title: The model field is constrained to a synthetic person, tests: [BRIEF-003] }
+  BRIEF-004: { file: requirements, title: Defaults are tasteful and commercially safe, tests: [BRIEF-004] }
+  BRIEF-005: { file: requirements, title: The brief is confirmed before any generation, tests: [BRIEF-005] }
+  BRIEF-006: { file: requirements, title: Corrections do not lose the original request, tests: [BRIEF-006] }
+  BRIEF-007: { file: requirements, title: The brief determines aspect ratio and image size, tests: [BRIEF-007, BRIEF-007] }
+  GEN-001: { file: requirements, title: Generation goes through the Gemini interactions API, tests: [GEN-001] }
+  GEN-002: { file: requirements, title: The pipeline depends on an interface not on Gemini, tests: [GEN-002] }
+  GEN-003: { file: requirements, title: The prompt is composed from separable layers, tests: [GEN-003, GEN-003, GEN-003, GEN-003, GEN-003] }
+  GEN-004: { file: requirements, title: The model must reproduce the garment faithfully, tests: [GEN-004] }
+  GEN-005: { file: requirements, title: Added text and watermarks are forbidden, tests: [GEN-005, GEN-005] }
+  GEN-006: { file: requirements, title: Reference images are supplied to the provider, tests: [GEN-006] }
+  GEN-007: { file: requirements, title: Reference count is capped, tests: [GEN-007] }
+  GEN-008: { file: requirements, title: A transient failure is retried with backoff, tests: [GEN-008] }
+  GEN-009: { file: requirements, title: A content-policy refusal is never retried, tests: [GEN-009] }
+  GEN-010: { file: requirements, title: Generation is bounded by a timeout, tests: [GEN-010] }
+  GEN-011: { file: requirements, title: The interaction id is captured for edits, tests: [GEN-011, GEN-011] }
+  GEN-012: { file: requirements, title: Generation outcomes are recorded, tests: [GEN-012, GEN-012, GEN-012] }
+  GEN-013: { file: requirements, title: A failed revision returns to review, tests: [GEN-013, GEN-013] }
+  GEN-014: { file: requirements, title: A failed first generation returns to confirm_brief, tests: [GEN-014, GEN-014] }
+  GEN-015: { file: requirements, title: Aspect ratio and image size come from the brief, tests: [GEN-015] }
+  GEN-016: { file: requirements, title: A successful generation is delivered to the user, tests: [GEN-016, GEN-016] }
+  ITER-001: { file: requirements, title: A revision is a chained edit, tests: [ITER-001] }
+  ITER-002: { file: requirements, title: A variation does not chain, tests: [ITER-002, ITER-002] }
+  ITER-003: { file: requirements, title: Revision and variation are mutually exclusive, tests: [ITER-003, ITER-003] }
+  ITER-004: { file: requirements, title: Variation notes are distinct and cycle safely, tests: [ITER-004] }
+  ITER-005: { file: requirements, title: A revision instruction is preserved verbatim, tests: [ITER-005, ITER-005] }
+  MED-001: { file: requirements, title: Media is sniffed never trusted, tests: [MED-001] }
+  MED-002: { file: requirements, title: PNG dimensions are parsed from the header, tests: [MED-002] }
+  MED-003: { file: requirements, title: JPEG dimensions are parsed from the SOF header, tests: [MED-003, MED-003] }
+  MED-004: { file: requirements, title: WebP is accepted, tests: [MED-004, MED-004, MED-004] }
+  MED-005: { file: requirements, title: Oversized payloads are rejected before any API call, tests: [MED-005] }
+  MED-006: { file: requirements, title: Unrecognised bytes are rejected safely, tests: [MED-006, MED-006] }
+  MED-007: { file: requirements, title: Empty payloads are rejected, tests: [MED-007] }
+  MED-008: { file: requirements, title: Undersized images are rejected, tests: [MED-008] }
+  MED-009: { file: requirements, title: A truncated but identifiable image is classified, tests: [MED-009] }
+  MED-010: { file: requirements, title: Identical bytes are stored once, tests: [MED-010] }
+  MED-011: { file: requirements, title: Cost per size is estimated for logging, tests: [MED-011] }
+  WA-001: { file: requirements, title: The verification handshake is honoured, tests: [WA-001] }
+  WA-002: { file: requirements, title: An incorrect verify token is refused, tests: [WA-002] }
+  WA-003: { file: requirements, title: Every payload is signature verified over raw bytes, tests: [WA-003, WA-003, WA-003, WA-003] }
+  WA-004: { file: requirements, title: A missing signature header is rejected, tests: [WA-004] }
+  WA-005: { file: requirements, title: A signature from another secret is rejected, tests: [WA-005] }
+  WA-006: { file: requirements, title: Malformed signatures are rejected without throwing, tests: [WA-006] }
+  WA-007: { file: requirements, title: Inbound text messages are normalised, tests: [WA-007] }
+  WA-008: { file: requirements, title: Inbound image messages keep their caption, tests: [WA-008] }
+  WA-009: { file: requirements, title: Outbound sends respect the 24-hour service window, implementation: not_implemented, verification: n/a, finding: F-001, tests: [] }
+  WA-010: { file: requirements, title: Interactive button replies are normalised, tests: [WA-010] }
+  WA-011: { file: requirements, title: Unsupported message types are ignored, tests: [WA-011] }
+  WA-012: { file: requirements, title: Delivery statuses are processed separately, tests: [WA-012, WA-012] }
+  WA-013: { file: requirements, title: A failed status surfaces its error detail, tests: [WA-013] }
+  WA-014: { file: requirements, title: A malformed payload yields empty results, tests: [WA-014] }
+  WA-015: { file: requirements, title: Outbound text goes through the Cloud API, tests: [WA-015, WA-015, WA-015, WA-015] }
+  WA-016: { file: requirements, title: Outbound images are uploaded before being referenced, tests: [WA-016, WA-016, WA-016] }
+  WA-017: { file: requirements, title: Inbound media is fetched in two authenticated hops, tests: [WA-017, WA-017, WA-017] }
+  WA-018: { file: requirements, title: The API version is pinned by configuration, tests: [WA-018] }
+  WA-019: { file: requirements, title: Read receipts are best effort, implementation: partial, gap: markRead is implemented but nothing calls it, finding: F-001, tests: [WA-019, WA-019] }
+  WA-020: { file: requirements, title: Outbound deliveries are recorded, tests: [WA-020] }
+  SIM-001: { file: requirements, title: The product runs locally with no Meta account, tests: [SIM-001, SIM-001] }
+  SIM-002: { file: requirements, title: A browser chat client is served, tests: [SIM-002] }
+  SIM-003: { file: requirements, title: Bot replies are streamed to the client, tests: [SIM-003] }
+  SIM-004: { file: requirements, title: Inbound images can be posted and are stored, tests: [SIM-004, SIM-004, SIM-004] }
+  SIM-005: { file: requirements, title: Invalid inbound requests are rejected with a reason, tests: [SIM-005, SIM-005, SIM-005, SIM-005] }
+  SIM-006: { file: requirements, title: Simulator hosted bytes are retrievable, tests: [SIM-006, SIM-006] }
+  SIM-007: { file: requirements, title: The catalog is listed for the UI, tests: [SIM-007, SIM-007] }
+  SIM-008: { file: requirements, title: A non-simulator channel does not serve the UI, tests: [SIM-008] }
+  SIM-009: { file: requirements, title: Simulator and WhatsApp namespaces are separate, tests: [SIM-009] }
+  PERSIST-001: { file: requirements, title: SQLite via the built-in driver, tests: [PERSIST-001] }
+  PERSIST-002: { file: requirements, title: The schema covers every domain entity, tests: [PERSIST-002, PERSIST-002] }
+  PERSIST-003: { file: requirements, title: Schema application is idempotent, tests: [PERSIST-003, PERSIST-003] }
+  PERSIST-004: { file: requirements, title: Repository methods are typed and constrained, tests: [PERSIST-004, PERSIST-004, PERSIST-004] }
+  PERSIST-005: { file: requirements, title: Session state is reloaded around every step, tests: [PERSIST-005] }
+  PERSIST-006: { file: requirements, title: Asset bytes live in a blob store, tests: [PERSIST-006] }
+  PERSIST-007: { file: requirements, title: The blob store is an interface, tests: [PERSIST-007] }
+  PERSIST-008: { file: requirements, title: Blob keys cannot escape the storage root, tests: [PERSIST-008] }
+  PERSIST-009: { file: requirements, title: Writes are atomic, tests: [PERSIST-009] }
+  PERSIST-010: { file: requirements, title: Message identity is unique per channel id, tests: [PERSIST-010, PERSIST-010] }
+  CATALOG-001: { file: requirements, title: Approving creates a product, tests: [CATALOG-001] }
+  CATALOG-002: { file: requirements, title: Products carry their commercial fields, tests: [CATALOG-002] }
+  CATALOG-003: { file: requirements, title: Assets link to products with an explicit role, tests: [CATALOG-003] }
+  CATALOG-004: { file: requirements, title: The hero asset is a generated image, tests: [CATALOG-004] }
+  CATALOG-005: { file: requirements, title: The current best output becomes the hero, tests: [CATALOG-005] }
+  CATALOG-006: { file: requirements, title: Products are listed newest first, tests: [CATALOG-006] }
+  CATALOG-007: { file: requirements, title: The catalog exports to CSV with the hero reference, tests: [CATALOG-007, CATALOG-007, CATALOG-007] }
+  CATALOG-008: { file: requirements, title: CSV escaping is correct, tests: [CATALOG-008] }
+  CFG-001: { file: requirements, title: Configuration is validated at boot, tests: [CFG-001, CFG-001] }
+  CFG-002: { file: requirements, title: The channel is selected by configuration, tests: [CFG-002] }
+  CFG-003: { file: requirements, title: Channel credentials are asserted before use, tests: [CFG-003] }
+  CFG-004: { file: requirements, title: The image model is configurable, tests: [CFG-004] }
+  CFG-005: { file: requirements, title: The text model is separately configurable, tests: [CFG-005] }
+  CFG-006: { file: requirements, title: The batching window is configurable, tests: [CFG-006] }
+  CFG-007: { file: requirements, title: Limits are configurable and bounded, tests: [CFG-007] }
+  CFG-008: { file: requirements, title: Example configuration documents every variable, tests: [CFG-008] }
+  OBS-001: { file: requirements, title: Structured logging suits each environment, tests: [OBS-001] }
+  OBS-002: { file: requirements, title: A health endpoint checks dependencies, tests: [OBS-002] }
+  OBS-003: { file: requirements, title: Health reports provider configuration state, tests: [OBS-003] }
+  OBS-004: { file: requirements, title: Each generation logs latency cost and remaining budget, tests: [OBS-004] }
+  OBS-005: { file: requirements, title: Failures are logged with diagnostic context, tests: [OBS-005] }
+  SEAM-001: { file: requirements, title: The channel is an interface, tests: [SEAM-001] }
+  SEAM-002: { file: requirements, title: The image engine is an interface, tests: [SEAM-002] }
+  SEAM-003: { file: requirements, title: Implementations are chosen in one place, tests: [SEAM-003] }
+  SEAM-004: { file: requirements, title: A missing key degrades safely, tests: [SEAM-004] }
+  SEAM-005: { file: requirements, title: Simulator and WhatsApp share one pipeline, tests: [SEAM-005] }
+  SEC-001: { file: requirements, title: Inbound webhooks require a valid signature, tests: [SEC-001, SEC-001] }
+  SEC-002: { file: requirements, title: Signature comparison is constant time, tests: [SEC-002] }
+  SEC-003: { file: requirements, title: Secrets are never committed, tests: [SEC-003, SEC-003, SEC-003] }
+  SEC-004: { file: requirements, title: The webhook refuses without its secret, tests: [SEC-004] }
+  SEC-005: { file: requirements, title: Duplicate delivery cannot replay a turn, tests: [SEC-005] }
+  SEC-006: { file: requirements, title: Media and catalog endpoints are unauthenticated and must not be public, implementation: deferred, finding: F-001, gap: unauthenticated by design for the local simulator, verification: n/a, tests: [SEC-006, SEC-006] }
+  SEC-007: { file: requirements, title: Unknown asset ids do not disclose anything, tests: [SEC-007] }
+  CONTENT-001: { file: requirements, title: Real identifiable people are prohibited, tests: [CONTENT-001] }
+  CONTENT-002: { file: requirements, title: Minors are prohibited, tests: [CONTENT-002] }
+  CONTENT-003: { file: requirements, title: The garment must not be restyled, tests: [CONTENT-003] }
+  CONTENT-004: { file: requirements, title: No added text or watermarks, tests: [CONTENT-004] }
+  CONTENT-005: { file: requirements, title: A refusal is a recoverable brief edit, tests: [CONTENT-005] }
+  COST-001: { file: requirements, title: Generations per item are capped, tests: [COST-001] }
+  COST-002: { file: requirements, title: No generation before brief confirmation, tests: [COST-002] }
+  COST-003: { file: requirements, title: Variation batches are bounded by budget, tests: [COST-003, COST-003] }
+  COST-004: { file: requirements, title: Per-call cost is estimated and persisted, tests: [COST-004] }
+  COST-005: { file: requirements, title: A batch does not multiply cost, tests: [COST-005] }

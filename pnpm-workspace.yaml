@@ -1,0 +1,16 @@
+# Single-package project, but this file is where pnpm 10+/11 reads build-script
+# approvals.
+#
+# All explicitly false. esbuild's native binary ships inside its platform package
+# (@esbuild/darwin-arm64) and rolldown's inside @rolldown/binding-*, so neither
+# postinstall is needed — confirmed by `./run.sh tsx` and the test suite passing
+# with these blocked. @google/genai and protobufjs are plain JS.
+#
+# They must be present as real booleans: if this key is absent, pnpm
+# auto-inserts the block with the literal placeholder text
+# "set this to true or false", which must never be committed.
+allowBuilds:
+  '@google/genai': false
+  esbuild: false
+  protobufjs: false
+onlyBuiltDependencies: []
