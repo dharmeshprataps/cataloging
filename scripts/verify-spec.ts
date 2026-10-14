@@ -16,8 +16,16 @@ import { parseYaml, type YamlValue } from './lib/yaml.js';
  * citations and reported full coverage (see DEC-0006). Therefore citations are
  * plain text in test titles and this parser is the only reader.
  *
- * Run as a library from `tests/spec-traceability.test.ts` (so `pnpm test` covers
- * it) and as a CLI via `pnpm spec:status` for the human-readable report.
+ * A citation is necessary evidence but not sufficient: a test that is skipped,
+ * that has an empty body, or that lives in a directory the scan does not reach
+ * would all count as proof while proving nothing. So this gate parses test
+ * declarations structurally and rejects each of those shapes (see DEC-0006).
+ * What it cannot do is execute the suite — `pnpm test` runs vitest first for
+ * that. The gate's job is to make the *citation* an honest pointer at a test
+ * that actually runs and actually asserts.
+ *
+ * Run as a library from `tests/spec-gate.test.ts` (so `pnpm test` covers it) and
+ * as a CLI via `pnpm spec:status` for the human-readable report.
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +45,13 @@ export type GateOptions = {
   /** Test files excluded from citation checks — the gate's own tests. */
   excludeTestFiles?: string[];
   /**
+   * Globs (relative to `testsDir`) for the test files this gate inspects. This
+   * must stay in step with `vitest.config.ts`'s `include`, or a test the runner
+   * executes becomes invisible to the gate — which is how a whole subdirectory
+   * of unverified tests can pass silently.
+   */
+  testGlobs?: string[];
+  /**
    * Additional files that carry requirement citations as `// ID` comments.
    * `scripts/verify-e2e.ts` is a real end-to-end check that cannot run under
    * vitest (it needs a real socket for the SSE route), so its assertions count
@@ -53,6 +68,7 @@ export type ResolvedOptions = {
   findingsDir: string;
   requirementFiles: Record<string, string>;
   excludeTestFiles: string[];
+  testGlobs: string[];
   citationSources: string[];
 };
 
@@ -80,7 +96,13 @@ export function resolveOptions(options: GateOptions = {}): ResolvedOptions {
     requirementFiles:
       options.requirementFiles ??
       ({ requirements: path.join(specDir, 'requirements.md') } satisfies Record<string, string>),
-    excludeTestFiles: options.excludeTestFiles ?? ['spec-traceability.test.ts', 'spec-gate.test.ts'],
+    // The gate's own tests cite ids as fixtures to prove violation detection, so
+    // they are not counted as coverage. Only `spec-gate.test.ts` exists; listing
+    // a name here silently excludes that file from every citation check, so the
+    // list must name real files only.
+    excludeTestFiles: options.excludeTestFiles ?? ['spec-gate.test.ts'],
+    // Kept in step with `vitest.config.ts`'s `include`.
+    testGlobs: options.testGlobs ?? ['**/*.test.ts'],
     citationSources:
       options.citationSources ?? [path.join(repoRoot, 'scripts/verify-e2e.ts')],
   };
@@ -102,6 +124,8 @@ export type Requirement = {
   title: string;
   implementation: Implementation;
   verification: Verification;
+  /** False when `traceability.yaml` omitted `verification` entirely. */
+  verificationStated: boolean;
   tests: string[];
   evidence: string;
   gap?: string;
@@ -148,6 +172,13 @@ function readIfPresent(file: string): string | undefined {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : undefined;
 }
 
+/** The value of a `| **Field** | value |` row in a metadata block, or undefined. */
+export function metadataCell(text: string, field: string): string | undefined {
+  const pattern = new RegExp(`^\\|\\s*\\*\\*${field}\\*\\*\\s*\\|([^|]*)\\|`, 'm');
+  const match = pattern.exec(text);
+  return match?.[1]?.trim();
+}
+
 /** Requirement ids declared as headings in a requirement document. */
 export function extractDeclaredIds(filePath: string): Map<string, number> {
   const out = new Map<string, number>();
@@ -169,31 +200,337 @@ export type TestCitation = {
   line: number;
 };
 
+/** A `describe(...)` or `it(...)`-family declaration found in a test file. */
+export type TestDeclaration = {
+  kind: 'suite' | 'test';
+  /** Dotted modifiers, e.g. `skip`, `each`, `concurrent`; '' for a plain call. */
+  modifier: string;
+  title: string;
+  file: string;
+  line: number;
+  /** Whether the declaration's own modifier means it never runs. */
+  skipped: boolean;
+  /**
+   * For a test: does the body contain at least one expectation? A body that
+   * asserts nothing cannot fail, so it is not evidence.
+   */
+  asserts: boolean;
+};
+
+/** `it`, `test`, `describe` and their `.skip` / `.todo` / `.each` forms. */
+const DECLARATION = /^\s*(?<fn>it|test|describe)(?<mods>(?:\.[A-Za-z_$][\w$]*)*)\s*\(/;
+const NEVER_RUNS = /(^|\.)(skip|todo|fails|fixme|skipIf|runIf|todoIf)(\.|$)/;
+/** Just before a `/`, these mean a regex literal rather than division. */
+const REGEX_PRECEDING = new Set(['', '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '<', '>', '+', '-', '*', '%', '^', '~']);
+
+/**
+ * Scans `text` once, returning a mask marking every character that sits inside
+ * a string, template literal, regex literal, or comment.
+ *
+ * One literal-aware pass is what makes the rest of the parser trustworthy. A
+ * `{` inside a regex literal in a test body (`said(/Here's the brief/)`) is
+ * otherwise treated as code, and the apostrophe in it opens a phantom string
+ * that never closes — so an empty-body test with such a call is misread as a
+ * test with a body, which is exactly the silent pass this gate exists to stop.
+ */
+function literalMask(text: string): Uint8Array {
+  const mask = new Uint8Array(text.length);
+  let prev = '';
+  let i = 0;
+  while (i < text.length) {
+    const two = text.slice(i, i + 2);
+    if (two === '//') {
+      const end = text.indexOf('\n', i);
+      const stop = end === -1 ? text.length : end;
+      mask.fill(1, i, stop);
+      i = stop;
+      continue;
+    }
+    if (two === '/*') {
+      const end = text.indexOf('*/', i + 2);
+      const stop = end === -1 ? text.length : end + 2;
+      mask.fill(1, i, stop);
+      i = stop;
+      continue;
+    }
+    const ch = text[i]!;
+    if (ch === "'" || ch === '"' || ch === '`') {
+      let j = i + 1;
+      while (j < text.length && text[j] !== ch) {
+        if (text[j] === '\\') j += 1;
+        j += 1;
+      }
+      const stop = Math.min(j + 1, text.length);
+      mask.fill(1, i, stop);
+      i = stop;
+      prev = ch;
+      continue;
+    }
+    if (ch === '/' && REGEX_PRECEDING.has(prev)) {
+      let j = i + 1;
+      let inClass = false;
+      while (j < text.length) {
+        if (text[j] === '\\') {
+          j += 2;
+          continue;
+        }
+        if (text[j] === '[') inClass = true;
+        else if (text[j] === ']') inClass = false;
+        else if (text[j] === '/' && !inClass) break;
+        else if (text[j] === '\n') break;
+        j += 1;
+      }
+      if (j < text.length && text[j] === '/') {
+        let k = j + 1;
+        while (k < text.length && /[a-z]/.test(text[k]!)) k += 1;
+        mask.fill(1, i, k);
+        i = k;
+        prev = '/';
+        continue;
+      }
+    }
+    if (!/\s/.test(ch)) prev = ch;
+    i += 1;
+  }
+  return mask;
+}
+
+/** `text` with every literal and comment replaced by an equivalent space. */
+function blankLiterals(text: string, mask: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < text.length; i += 1) out += mask[i] ? (text[i] === '\n' ? '\n' : ' ') : text[i];
+  return out;
+}
+
+/**
+ * The balanced `{...}` body starting at `start`, with literals and comments
+ * blanked. Index positions are preserved, so masks can be sliced through with
+ * the same offsets.
+ */
+function bracedBody(text: string, start: number, mask: Uint8Array): string | undefined {
+  const code = blankLiterals(text, mask);
+  let depth = 0;
+  let from = start;
+  for (let i = start; i < code.length; i += 1) {
+    if (code[i] === '{') {
+      if (depth === 0) from = i;
+      depth += 1;
+    } else if (code[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return text.slice(from + 1, i);
+      if (depth < 0) return undefined;
+    }
+  }
+  return undefined;
+}
+
+/** The index of the `)` closing the `(` at `open`, or -1. */
+function findCloseParen(code: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < code.length; i += 1) {
+    if (code[i] === '(') depth += 1;
+    else if (code[i] === ')') {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** The index of the `=>` beginning a callback at/after `from`, or -1. */
+function findArrow(code: string, from: number): number {
+  for (let i = from; i < code.length - 1; i += 1) {
+    if (code[i] !== '=' || code[i + 1] !== '>') continue;
+    // Every vitest callback is an arrow function; a `>` in a generic type
+    // argument is not followed by an identifier-shaped callback body.
+    return i;
+  }
+  return -1;
+}
+
+/** Assertions strong enough that removing them makes a test unable to fail. */
+const ASSERTION = /\b(?:expect|assert)\b|\.to(?:Be|Equal|Match|Throw|Contain)\b|\bthrow\b/;
+
+/**
+ * Every `it`/`test`/`describe` declaration in the test tree, scanned
+ * **recursively**.
+ *
+ * Recursion matters: `vitest.config.ts` globs `tests/**\/*.test.ts`, so a test in
+ * a subdirectory runs in CI. A non-recursive scan would leave it uncited and
+ * unverified in both directions at once.
+ */
+export function extractTestDeclarations(
+  opts: ResolvedOptions = resolveOptions(),
+): TestDeclaration[] {
+  const out: TestDeclaration[] = [];
+  for (const rel of findTestFiles(opts)) {
+    const text = readIfPresent(path.join(opts.testsDir, rel));
+    if (text === undefined) continue;
+    for (const declaration of scanDeclarations(text, rel)) out.push(declaration);
+  }
+  return out.sort(
+    (a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.title.localeCompare(b.title),
+  );
+}
+
+/**
+ * Test files the gate inspects, relative to `testsDir`, matched against
+ * `opts.testGlobs` and walked recursively. `excludeTestFiles` is matched by
+ * basename so a nested excluded file is still excluded.
+ */
+export function findTestFiles(opts: ResolvedOptions = resolveOptions()): string[] {
+  if (!fs.existsSync(opts.testsDir)) return [];
+  const files: string[] = [];
+  const visit = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    )) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(full);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const rel = path.relative(opts.testsDir, full).split(path.sep).join('/');
+      if (opts.excludeTestFiles.includes(path.basename(rel))) continue;
+      if (matchesTestGlob(rel, opts.testGlobs)) files.push(rel);
+    }
+  };
+  visit(opts.testsDir);
+  return files.sort();
+}
+
+/** Minimal glob match: `**` crosses directories, `*` does not. */
+function matchesTestGlob(rel: string, globs: string[]): boolean {
+  return globs.some((glob) => {
+    const pattern = glob
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*\*\//g, '\u0000')
+      .replace(/\*\*/g, '\u0001')
+      .replace(/\*/g, '[^/]*')
+      .replace(/\u0000/g, '(?:.*/)?')
+      .replace(/\u0001/g, '.*');
+    return new RegExp(`^${pattern}$`).test(rel);
+  });
+}
+
+function scanDeclarations(text: string, file: string): TestDeclaration[] {
+  const lines = text.split(/\r?\n/);
+  const out: TestDeclaration[] = [];
+  // Every body and title is read from this mask, so literals and comments
+  // cannot be mistaken for syntax.
+  const mask = literalMask(text);
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const match = DECLARATION.exec(lines[i]!);
+    const fn = match?.groups?.fn;
+    if (!match || !fn) continue;
+
+    const mods = (match.groups?.mods ?? '').split('.').filter((m) => m.length > 0);
+    const modifier = mods.join('.');
+    // `skip`/`todo`/`fails`/`fixme` and their conditional forms are all cases
+    // where the body may not execute at all.
+    const skipped = NEVER_RUNS.test(modifier);
+
+    // The declaration may span lines (`it(\n  'title', ...`), so search forward
+    // from the call for its title literal and body.
+    const start = lineOffset(lines, i);
+    const window = text.slice(start, start + 2000);
+    const windowMask = mask.subarray(start, start + 2000);
+    const titleMatch = /\(\s*(['"`])([\s\S]*?)\1/.exec(window);
+    if (!titleMatch?.[2]) continue;
+
+    let cursor = titleMatch.index + titleMatch[0].length;
+    let asserts = false;
+
+    if (fn !== 'describe') {
+      const arrow = findArrow(blankLiterals(window, windowMask), cursor);
+      if (arrow !== -1) {
+        const afterArrow = arrow + 2;
+        const open = blankLiterals(window, windowMask).indexOf('{', afterArrow);
+        if (open !== -1) {
+          cursor = open;
+          const body = bracedBody(text, start + open, mask);
+          asserts = body !== undefined && ASSERTION.test(blankLiterals(body, mask.subarray(start + open + 1, start + open + 1 + body.length)));
+        } else {
+          // Concise body on one line: `() => expect(x).toBe(y)`.
+          const end = blankLiterals(window, windowMask).indexOf('\n', afterArrow);
+          const concise = window.slice(afterArrow, end === -1 ? window.length : end);
+          const conciseMask = mask.subarray(start + afterArrow, start + (end === -1 ? window.length : end));
+          asserts = ASSERTION.test(blankLiterals(concise, conciseMask));
+          cursor = afterArrow;
+        }
+      } else {
+        // `it('title', function () { ... })`
+        const open = window.indexOf('(', titleMatch.index + 1);
+        const close = open === -1 ? -1 : findCloseParen(blankLiterals(window, windowMask), open + 1);
+        const brace = close === -1 ? -1 : blankLiterals(window, windowMask).indexOf('{', close + 1);
+        if (brace !== -1) {
+          cursor = brace;
+          const body = bracedBody(text, start + brace, mask);
+          asserts = body !== undefined && ASSERTION.test(blankLiterals(body, mask.subarray(start + brace + 1, start + brace + 1 + body.length)));
+        }
+      }
+    }
+
+    out.push({
+      kind: fn === 'describe' ? 'suite' : 'test',
+      modifier,
+      title: titleMatch[2],
+      file,
+      line: i + 1,
+      skipped,
+      asserts,
+    });
+    // Resume after this declaration. A `describe` body still has to be scanned
+    // for the tests inside it, which is why the suite's body is not consumed:
+    // only its own title line is skipped.
+    i = Math.max(i, lineIndexAt(lines, start + cursor) - 1);
+  }
+
+  return out;
+}
+
+function lineOffset(lines: string[], index: number): number {
+  let offset = 0;
+  for (let i = 0; i < index; i += 1) offset += lines[i]!.length + 1;
+  return offset;
+}
+
+function lineIndexAt(lines: string[], offset: number): number {
+  let seen = 0;
+  for (let i = 0; i < lines.length; i += 1) {
+    seen += lines[i]!.length + 1;
+    if (seen > offset) return i + 1;
+  }
+  return lines.length;
+}
+
+/**
+ * Whether a file's declarations mean it can be skipped wholesale: a vitest
+ * `--exclude`-style suite skip, or a `describe.skip`. Used to catch a whole
+ * suite wrapped in `describe.skip(...)`, which leaves the inner `it` calls
+ * unmodified but never executed.
+ */
+export function hasSkippedSuite(declarations: TestDeclaration[]): boolean {
+  return declarations.some((d) => d.kind === 'suite' && d.skipped);
+}
+
 /** Requirement citations found in test titles. */
 export function extractTestCitations(opts: ResolvedOptions = resolveOptions()): TestCitation[] {
   const out: TestCitation[] = [];
-  if (!fs.existsSync(opts.testsDir)) return out;
-  const files = fs
-    .readdirSync(opts.testsDir)
-    .filter((f) => f.endsWith('.test.ts'))
-    .sort();
 
-  for (const file of files) {
-    // The gate's own tests cite ids as fixtures to prove violation detection,
-    // so they are not counted as coverage.
-    if (opts.excludeTestFiles.includes(file)) continue;
-
-    const full = path.join(opts.testsDir, file);
-    const lines = fs.readFileSync(full, 'utf8').split(/\r?\n/);
-    for (let i = 0; i < lines.length; i += 1) {
-      const match = /^\s*(?:it|test)\(\s*(['"`])(.*?)\1/.exec(lines[i]!);
-      const title = match?.[2];
-      if (!title) continue;
-      const cited = CITATION.exec(title);
-      if (!cited?.[1]) continue;
-      for (const id of cited[1].trim().split(/\s+/)) {
-        out.push({ requirementId: id, title, file, line: i + 1 });
-      }
+  for (const declaration of extractTestDeclarations(opts)) {
+    if (declaration.kind !== 'test') continue;
+    const cited = CITATION.exec(declaration.title);
+    if (!cited?.[1]) continue;
+    for (const id of cited[1].trim().split(/\s+/)) {
+      out.push({
+        requirementId: id,
+        title: declaration.title,
+        file: declaration.file,
+        line: declaration.line,
+      });
     }
   }
 
@@ -269,9 +606,14 @@ function parseRequirements(opts: ResolvedOptions): { requirements: Requirement[]
       implementation: (entry.implementation === undefined
         ? 'implemented'
         : String(entry.implementation)) as Implementation,
+      // No default for `verification`. Omitting it used to mean `verified`,
+      // which made the strongest possible claim the one an author could make by
+      // accident; the vocabulary check below now requires it to be stated. The
+      // fallback is deliberately the weakest value, never `verified`.
       verification: (entry.verification === undefined
-        ? 'verified'
+        ? 'unverified'
         : String(entry.verification)) as Verification,
+      verificationStated: entry.verification !== undefined,
       tests: asStringArray(entry.tests),
       evidence: entry.evidence === undefined ? 'OBSERVED EVIDENCE' : String(entry.evidence),
       line: 0,
@@ -325,7 +667,7 @@ export function runGate(options: GateOptions = {}): GateResult {
     const line = declared.get(r.id);
     if (line === undefined) {
       exists.violations.push(
-        `${r.id}: not found as a heading in spec/requirements/${r.file}.md`,
+        `${r.id}: not found as a heading in openspec/changes/${CHANGE_ID}/${r.file}.md`,
       );
     } else {
       r.line = line;
@@ -381,16 +723,82 @@ export function runGate(options: GateOptions = {}): GateResult {
     }
     if (!verOk.has(r.verification)) {
       vocab.violations.push(`${r.id}: unknown verification '${r.verification}'`);
+    } else if (!r.verificationStated) {
+      vocab.violations.push(
+        `${r.id}: no \`verification\` given — state 'verified', 'unverified' or 'n/a' explicitly`,
+      );
     }
   }
 
   // ------------------------------------------------------------------- tests
+  const declarations = extractTestDeclarations(opts);
+  const testDeclarations = declarations.filter((d) => d.kind === 'test');
+  // A `describe.skip('...')` leaves the `it` calls inside it unmodified but
+  // never executed, so any file containing a skipped suite is treated as
+  // unproven wholesale rather than as evidence.
+  const declarationsByFile = new Map<string, TestDeclaration[]>();
+  for (const d of declarations) {
+    const list = declarationsByFile.get(d.file) ?? [];
+    list.push(d);
+    declarationsByFile.set(d.file, list);
+  }
+  const filesWithSkippedSuite = new Set(
+    [...declarationsByFile.entries()]
+      .filter(([, list]) => hasSkippedSuite(list))
+      .map(([file]) => file),
+  );
   const citations = extractTestCitations(opts);
   const citedByRequirement = new Map<string, TestCitation[]>();
   for (const c of citations) {
     const list = citedByRequirement.get(c.requirementId) ?? [];
     list.push(c);
     citedByRequirement.set(c.requirementId, list);
+  }
+  // Test declarations by `file:line`, so a citation can be resolved back to the
+  // declaration that produced it.
+  const declarationAt = new Map<string, TestDeclaration>();
+  for (const d of testDeclarations) declarationAt.set(`${d.file}:${d.line}`, d);
+
+  const runsActually = check('every citing test actually runs');
+  // Citations from a non-vitest source (`scripts/verify-e2e.ts`) are `// ID`
+  // comments over real HTTP checks, not test declarations, so the structural
+  // rules cannot apply to them: `pnpm verify:e2e` runs them and fails loudly.
+  const isTestDeclarationCitation = (c: TestCitation): boolean =>
+    !opts.citationSources.some((source) => path.relative(opts.repoRoot, source) === c.file);
+  const testIsEvidence = (c: TestCitation): boolean => {
+    if (!isTestDeclarationCitation(c)) return true;
+    const declaration = declarationAt.get(`${c.file}:${c.line}`);
+    if (!declaration) return false;
+    if (declaration.skipped) return false;
+    if (filesWithSkippedSuite.has(c.file)) return false;
+    return true;
+  };
+  for (const c of citations) {
+    if (!isTestDeclarationCitation(c)) continue;
+    const declaration = declarationAt.get(`${c.file}:${c.line}`);
+    if (declaration) {
+      if (declaration.skipped) {
+        runsActually.violations.push(
+          `${c.file}:${c.line} is marked '${declaration.modifier}' but is cited as evidence for ${c.requirementId}`,
+        );
+      } else if (filesWithSkippedSuite.has(c.file)) {
+        runsActually.violations.push(
+          `${c.file} wraps its tests in a skipped suite, so ${c.requirementId} is not proven by line ${c.line}`,
+        );
+      }
+    }
+    // A citation whose test declaration cannot be found is reported by the
+    // orphan/untethered checks; nothing extra to say here.
+  }
+
+  const assertsSomething = check('every citing test asserts something');
+  for (const c of citations) {
+    if (!isTestDeclarationCitation(c)) continue;
+    const declaration = declarationAt.get(`${c.file}:${c.line}`);
+    if (!declaration || declaration.asserts) continue;
+    assertsSomething.violations.push(
+      `${c.file}:${c.line} cites ${c.requirementId} but contains no assertion — an empty body cannot fail`,
+    );
   }
 
   const orphanCitation = check('every requirement cited by a test exists in traceability.yaml');
@@ -422,6 +830,14 @@ export function runGate(options: GateOptions = {}): GateResult {
       falseVerified.violations.push(
         `${r.id}: verification is 'verified' but no test cites it`,
       );
+      continue;
+    }
+    // A citation is only evidence if the test it names actually runs and
+    // asserts; otherwise the requirement is `verified` on paper alone.
+    if (!cited.some(testIsEvidence)) {
+      falseVerified.violations.push(
+        `${r.id}: verification is 'verified' but every citing test is skipped, in a skipped suite, or unparseable`,
+      );
     }
   }
 
@@ -441,21 +857,11 @@ export function runGate(options: GateOptions = {}): GateResult {
   }
 
   const untethered = check('every test cites at least one requirement');
-  const testFiles = fs
-    .readdirSync(TESTS_DIR)
-    .filter((f) => f.endsWith('.test.ts') && !opts.excludeTestFiles.includes(f))
-    .sort();
-  for (const file of testFiles) {
-    const lines = fs.readFileSync(path.join(TESTS_DIR, file), 'utf8').split(/\r?\n/);
-    for (let i = 0; i < lines.length; i += 1) {
-      const m = /^\s*(?:it|test)\(\s*(['"`])(.*?)\1/.exec(lines[i]!);
-      const title = m?.[2];
-      if (!title) continue;
-      if (!CITATION.test(title)) {
-        untethered.violations.push(
-          `${file}:${i + 1} "${title}" — expected a leading requirement id, e.g. 'CONV-004 ...'`,
-        );
-      }
+  for (const declaration of testDeclarations) {
+    if (!CITATION.test(declaration.title)) {
+      untethered.violations.push(
+        `${declaration.file}:${declaration.line} "${declaration.title}" — expected a leading requirement id, e.g. 'CONV-004 ...'`,
+      );
     }
   }
 
@@ -485,7 +891,7 @@ export function runGate(options: GateOptions = {}): GateResult {
     const present = findingFiles.some((f) => f.startsWith(`${r.finding}_`) || f === `${r.finding}.md`);
     if (!present) {
       findingExists.violations.push(
-        `${r.id}: finding ${r.finding} has no artifact in spec/artifacts/`,
+        `${r.id}: finding ${r.finding} has no artifact in openspec/changes/${CHANGE_ID}/findings/`,
       );
     }
   }
@@ -509,6 +915,36 @@ export function runGate(options: GateOptions = {}): GateResult {
     }
     if (!/^\|\s*\*\*Status\*\*\s*\|/m.test(text)) {
       docs.violations.push(`${rel}: metadata block has no Status field`);
+    }
+  }
+
+  /**
+   * The repository's own precondition, enforced rather than assumed.
+   *
+   * `AGENTS.md`: "Do not implement until the specification has an explicit
+   * `APPROVED` marker." Nothing else this gate checks means anything if the
+   * specification authorising the work is still a draft, so this is the first
+   * claim it verifies and the one that must never be relaxed to a warning.
+   */
+  const approved = check('the specification is APPROVED by a named approver');
+  const specText = readIfPresent(path.join(SPEC_DIR, 'spec.md'));
+  if (specText === undefined) {
+    approved.violations.push(`missing ${path.relative(opts.repoRoot, path.join(SPEC_DIR, 'spec.md'))}`);
+  } else {
+    const specRel = path.relative(opts.repoRoot, path.join(SPEC_DIR, 'spec.md'));
+    const status = metadataCell(specText, 'Status');
+    if (status === undefined) {
+      approved.violations.push(`${specRel}: no \`Status\` row in the metadata block`);
+    } else if (!/^APPROVED\b/.test(status.trim())) {
+      approved.violations.push(
+        `${specRel}: Status is '${status.trim()}', not APPROVED — implementation is not authorised`,
+      );
+    }
+    const approver = metadataCell(specText, 'Approved by');
+    if (approver === undefined) {
+      approved.violations.push(`${specRel}: no \`Approved by\` row in the metadata block`);
+    } else if (!approver.trim() || approver.trim() === '—' || approver.trim() === '-') {
+      approved.violations.push(`${specRel}: \`Approved by\` names no approver`);
     }
   }
 
@@ -578,7 +1014,7 @@ export function formatReport(result: GateResult): string {
     for (let i = 0; i < summary.unverified.length; i += perLine) {
       lines.push(`  ${summary.unverified.slice(i, i + perLine).join('  ')}`);
     }
-    lines.push('  see spec/artifacts/PRB-0003_Normalization_Gaps.md');
+    lines.push(`  see openspec/changes/${CHANGE_ID}/PROBLEMS.md`);
   }
 
   lines.push('');

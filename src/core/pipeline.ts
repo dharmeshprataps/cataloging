@@ -31,21 +31,27 @@ import {
  */
 
 /** Serialises turns per session so concurrent webhooks cannot interleave state. */
-class KeyedLock {
+export class KeyedLock {
   private readonly chains = new Map<string, Promise<unknown>>();
 
   run<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const prior = this.chains.get(key) ?? Promise.resolve();
     // Swallow the prior result so one failure does not reject the next turn.
     const next = prior.then(fn, fn);
-    this.chains.set(
-      key,
-      next.catch(() => undefined),
-    );
-    void next.finally(() => {
-      if (this.chains.get(key) === next) this.chains.delete(key);
+    // The stored promise must be the *same object* the cleanup compares
+    // against, or the entry is never removed and `chains` grows by one entry
+    // per distinct contact for the lifetime of the process.
+    const chained = next.catch(() => undefined);
+    this.chains.set(key, chained);
+    void chained.finally(() => {
+      if (this.chains.get(key) === chained) this.chains.delete(key);
     });
     return next;
+  }
+
+  /** Visible for tests: entries must not accumulate. */
+  get size(): number {
+    return this.chains.size;
   }
 }
 
@@ -414,21 +420,41 @@ export class Pipeline {
     await this.reply(session.id, to, COPY.unrecognised);
   }
 
+  /**
+   * Links a SKU mentioned in the text to a product row.
+   *
+   * Duplicate SKUs are ordinary here — the same garment photographed again —
+   * and `uniq_products_org_sku` makes a blind `createProduct` throw. That throw
+   * used to escape the turn entirely: the user got the generic error copy and
+   * the message was already recorded as delivered, so a Meta retry of the same
+   * wamid was suppressed and the text was lost. So this looks the product up
+   * first and only creates when the SKU is genuinely new.
+   */
   private async captureSku(session: SessionRow, text: string): Promise<SessionRow> {
     const match = SKU_PATTERN.exec(text);
     if (!match?.[1]) return session;
 
     const sku = match[1].toUpperCase();
+    const orgId =
+      this.repo.getContactById(session.contact_id)?.org_id ?? this.repo.ensureDefaultOrg().id;
+    const existing = this.repo.getProductBySku(orgId, sku);
     let productId = session.product_id;
-    if (!productId) {
-      const orgId =
-        this.repo.getContactById(session.contact_id)?.org_id ??
-        this.repo.ensureDefaultOrg().id;
-      const product = this.repo.createProduct({ orgId, sku });
-      productId = product.id;
-      this.repo.updateSession(session.id, { product_id: productId });
-    } else {
+
+    if (existing) {
+      // Reuse the row. Pointing the session at it is required in the first case
+      // and correct in the second: a SKU identifies one product, so two items
+      // carrying the same SKU are the same product.
+      productId = existing.id;
+    } else if (productId) {
+      // This session's own row still holds the SKU, so updating it cannot
+      // collide with itself.
       this.repo.updateProduct(productId, { sku });
+    } else {
+      productId = this.repo.createProduct({ orgId, sku }).id;
+    }
+
+    if (session.product_id !== productId) {
+      this.repo.updateSession(session.id, { product_id: productId });
     }
     return this.repo.getSession(session.id)!;
   }

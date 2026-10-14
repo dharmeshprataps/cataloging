@@ -6,8 +6,17 @@
 #   id: { file, title, implementation, verification, tests, [gap], [finding] }
 #
 # Defaults, omitted when they apply: implementation=implemented,
-# evidence=OBSERVED EVIDENCE. `verification: verified` means an automated test
-# fails if the behaviour breaks; such a test's title begins with the id.
+# evidence=OBSERVED EVIDENCE.
+#
+# `verification` is required and must be stated; the gate rejects an entry that
+# omits it. `verification: verified` means an automated test fails if the
+# behaviour breaks — such a test's title begins with the id, the test is not
+# skipped (nor inside a skipped suite), and its body contains at least one
+# assertion. `unverified` means the behaviour is implemented but nothing proves
+# it: say why in `gap` and link the `finding` that owns it.
+#
+# Values are unquoted, and this reader treats a quote character as opening a
+# quoted string, so keep quotation marks out of `gap`/`title` text.
 #
 # Findings are F-001..F-003 (see findings/) and P-1..P-8 (see PROBLEMS.md).
 
@@ -15,159 +24,159 @@ version: 1
 change: requirements-baseline
 
 requirements:
-  CONV-001: { file: requirements, title: Stages are formally enumerated, tests: [CONV-001] }
-  CONV-002: { file: requirements, title: Terminal sessions are not resumed, tests: [CONV-002] }
-  CONV-003: { file: requirements, title: An idle user is asked for garment photos, tests: [CONV-003] }
-  CONV-004: { file: requirements, title: Duplicate deliveries are suppressed before any work, tests: [CONV-004, CONV-004] }
-  CONV-005: { file: requirements, title: A confirmed brief returns to review, tests: [CONV-005] }
-  CONV-006: { file: requirements, title: Review accepts numbered commands, tests: [CONV-006, CONV-006] }
-  CONV-007: { file: requirements, title: Review accepts named commands and the go alias, tests: [CONV-007] }
+  CONV-001: { file: requirements, title: Stages are formally enumerated, verification: verified, tests: [CONV-001] }
+  CONV-002: { file: requirements, title: Terminal sessions are not resumed, verification: verified, tests: [CONV-002] }
+  CONV-003: { file: requirements, title: An idle user is asked for garment photos, verification: verified, tests: [CONV-003] }
+  CONV-004: { file: requirements, title: Duplicate deliveries are suppressed before any work, verification: verified, tests: [CONV-004, CONV-004, CONV-004, CONV-004, CONV-004, CONV-004] }
+  CONV-005: { file: requirements, title: A confirmed brief returns to review, verification: verified, tests: [CONV-005] }
+  CONV-006: { file: requirements, title: Review accepts numbered commands, verification: verified, tests: [CONV-006, CONV-006] }
+  CONV-007: { file: requirements, title: Review accepts named commands and the go alias, verification: verified, tests: [CONV-007] }
   CONV-008: { file: requirements, title: Review commands require an existing output, implementation: deferred, finding: F-001, verification: n/a, tests: [] }
-  CONV-009: { file: requirements, title: Unrecognised review text is revision feedback, tests: [CONV-009, CONV-009] }
-  CONV-010: { file: requirements, title: Pleasantries are not instructions, tests: [CONV-010, CONV-010] }
-  CONV-011: { file: requirements, title: Revisions preserve fidelity through chaining, tests: [CONV-011] }
-  CONV-012: { file: requirements, title: Variation prompts are pairwise distinct, tests: [CONV-012] }
-  CONV-013: { file: requirements, title: details returns the current brief, tests: [CONV-013] }
-  CONV-014: { file: requirements, title: cancel terminates the item, tests: [CONV-014] }
-  CONV-015: { file: requirements, title: Approval records the item and acknowledges it, tests: [CONV-015] }
-  CONV-016: { file: requirements, title: New photos during review start a new item, tests: [CONV-016] }
-  CONV-017: { file: requirements, title: SKUs are captured from free text, tests: [CONV-017] }
-  CONV-018: { file: requirements, title: An explicit reset works from any stage, tests: [CONV-018] }
-  CONV-019: { file: requirements, title: The word new is not misread mid-flow, tests: [CONV-019] }
-  CONV-020: { file: requirements, title: State survives process restart, tests: [CONV-020] }
-  UX-001: { file: requirements, title: help returns the workflow, tests: [UX-001] }
-  UX-002: { file: requirements, title: Greeting is available from idle, tests: [UX-002] }
-  UX-003: { file: requirements, title: No turn ends in silence, tests: [UX-003] }
-  UX-004: { file: requirements, title: Failure messages are actionable, tests: [UX-004, UX-004] }
-  UX-005: { file: requirements, title: Long work is acknowledged before it starts, tests: [UX-005] }
-  BATCH-001: { file: requirements, title: Bursty sends assemble into one turn, tests: [BATCH-001, BATCH-001] }
-  BATCH-002: { file: requirements, title: Three photos produce one acknowledgement, tests: [BATCH-002, BATCH-002] }
-  BATCH-003: { file: requirements, title: Buffers are independent per contact, tests: [BATCH-003] }
-  BATCH-004: { file: requirements, title: Text is acted on only for the last message, tests: [BATCH-004] }
-  BATCH-005: { file: requirements, title: Duplicates within one batch are suppressed, tests: [BATCH-005] }
-  BATCH-006: { file: requirements, title: An empty batch is a no-op, tests: [BATCH-006] }
-  BATCH-007: { file: requirements, title: The window opens fresh after closing, tests: [BATCH-007] }
-  BATCH-008: { file: requirements, title: Flush releases buffered items immediately, tests: [BATCH-008] }
-  BATCH-009: { file: requirements, title: Every waiting caller receives the batch once, tests: [BATCH-009] }
-  BATCH-010: { file: requirements, title: Keys are isolated and unknown-key flush is a no-op, tests: [BATCH-010] }
-  BRIEF-001: { file: requirements, title: Free-form text becomes a validated brief, tests: [BRIEF-001] }
-  BRIEF-002: { file: requirements, title: The brief schema constrains the domain, tests: [BRIEF-002] }
-  BRIEF-003: { file: requirements, title: The model field is constrained to a synthetic person, tests: [BRIEF-003] }
-  BRIEF-004: { file: requirements, title: Defaults are tasteful and commercially safe, tests: [BRIEF-004] }
-  BRIEF-005: { file: requirements, title: The brief is confirmed before any generation, tests: [BRIEF-005] }
-  BRIEF-006: { file: requirements, title: Corrections do not lose the original request, tests: [BRIEF-006] }
-  BRIEF-007: { file: requirements, title: The brief determines aspect ratio and image size, tests: [BRIEF-007, BRIEF-007] }
-  GEN-001: { file: requirements, title: Generation goes through the Gemini interactions API, tests: [GEN-001] }
-  GEN-002: { file: requirements, title: The pipeline depends on an interface not on Gemini, tests: [GEN-002] }
-  GEN-003: { file: requirements, title: The prompt is composed from separable layers, tests: [GEN-003, GEN-003, GEN-003, GEN-003, GEN-003] }
-  GEN-004: { file: requirements, title: The model must reproduce the garment faithfully, tests: [GEN-004] }
-  GEN-005: { file: requirements, title: Added text and watermarks are forbidden, tests: [GEN-005, GEN-005] }
-  GEN-006: { file: requirements, title: Reference images are supplied to the provider, tests: [GEN-006] }
-  GEN-007: { file: requirements, title: Reference count is capped, tests: [GEN-007] }
-  GEN-008: { file: requirements, title: A transient failure is retried with backoff, tests: [GEN-008] }
-  GEN-009: { file: requirements, title: A content-policy refusal is never retried, tests: [GEN-009] }
-  GEN-010: { file: requirements, title: Generation is bounded by a timeout, tests: [GEN-010] }
-  GEN-011: { file: requirements, title: The interaction id is captured for edits, tests: [GEN-011, GEN-011] }
-  GEN-012: { file: requirements, title: Generation outcomes are recorded, tests: [GEN-012, GEN-012, GEN-012] }
-  GEN-013: { file: requirements, title: A failed revision returns to review, tests: [GEN-013, GEN-013] }
-  GEN-014: { file: requirements, title: A failed first generation returns to confirm_brief, tests: [GEN-014, GEN-014] }
-  GEN-015: { file: requirements, title: Aspect ratio and image size come from the brief, tests: [GEN-015] }
-  GEN-016: { file: requirements, title: A successful generation is delivered to the user, tests: [GEN-016, GEN-016] }
-  ITER-001: { file: requirements, title: A revision is a chained edit, tests: [ITER-001] }
-  ITER-002: { file: requirements, title: A variation does not chain, tests: [ITER-002, ITER-002] }
-  ITER-003: { file: requirements, title: Revision and variation are mutually exclusive, tests: [ITER-003, ITER-003] }
-  ITER-004: { file: requirements, title: Variation notes are distinct and cycle safely, tests: [ITER-004] }
-  ITER-005: { file: requirements, title: A revision instruction is preserved verbatim, tests: [ITER-005, ITER-005] }
-  MED-001: { file: requirements, title: Media is sniffed never trusted, tests: [MED-001] }
-  MED-002: { file: requirements, title: PNG dimensions are parsed from the header, tests: [MED-002] }
-  MED-003: { file: requirements, title: JPEG dimensions are parsed from the SOF header, tests: [MED-003, MED-003] }
-  MED-004: { file: requirements, title: WebP is accepted, tests: [MED-004, MED-004, MED-004] }
-  MED-005: { file: requirements, title: Oversized payloads are rejected before any API call, tests: [MED-005] }
-  MED-006: { file: requirements, title: Unrecognised bytes are rejected safely, tests: [MED-006, MED-006] }
-  MED-007: { file: requirements, title: Empty payloads are rejected, tests: [MED-007] }
-  MED-008: { file: requirements, title: Undersized images are rejected, tests: [MED-008] }
-  MED-009: { file: requirements, title: A truncated but identifiable image is classified, tests: [MED-009] }
-  MED-010: { file: requirements, title: Identical bytes are stored once, tests: [MED-010] }
-  MED-011: { file: requirements, title: Cost per size is estimated for logging, tests: [MED-011] }
-  WA-001: { file: requirements, title: The verification handshake is honoured, tests: [WA-001] }
-  WA-002: { file: requirements, title: An incorrect verify token is refused, tests: [WA-002] }
-  WA-003: { file: requirements, title: Every payload is signature verified over raw bytes, tests: [WA-003, WA-003, WA-003, WA-003] }
-  WA-004: { file: requirements, title: A missing signature header is rejected, tests: [WA-004] }
-  WA-005: { file: requirements, title: A signature from another secret is rejected, tests: [WA-005] }
-  WA-006: { file: requirements, title: Malformed signatures are rejected without throwing, tests: [WA-006] }
-  WA-007: { file: requirements, title: Inbound text messages are normalised, tests: [WA-007] }
-  WA-008: { file: requirements, title: Inbound image messages keep their caption, tests: [WA-008] }
+  CONV-009: { file: requirements, title: Unrecognised review text is revision feedback, verification: verified, tests: [CONV-009, CONV-009] }
+  CONV-010: { file: requirements, title: Pleasantries are not instructions, verification: verified, tests: [CONV-010, CONV-010] }
+  CONV-011: { file: requirements, title: Revisions preserve fidelity through chaining, verification: verified, tests: [CONV-011] }
+  CONV-012: { file: requirements, title: Variation prompts are pairwise distinct, verification: verified, tests: [CONV-012] }
+  CONV-013: { file: requirements, title: details returns the current brief, verification: verified, tests: [CONV-013] }
+  CONV-014: { file: requirements, title: cancel terminates the item, verification: verified, tests: [CONV-014] }
+  CONV-015: { file: requirements, title: Approval records the item and acknowledges it, verification: verified, tests: [CONV-015] }
+  CONV-016: { file: requirements, title: New photos during review start a new item, verification: verified, tests: [CONV-016] }
+  CONV-017: { file: requirements, title: SKUs are captured from free text, verification: verified, tests: [CONV-017] }
+  CONV-018: { file: requirements, title: An explicit reset works from any stage, verification: verified, tests: [CONV-018] }
+  CONV-019: { file: requirements, title: The word new is not misread mid-flow, verification: verified, tests: [CONV-019] }
+  CONV-020: { file: requirements, title: State survives process restart, verification: verified, tests: [CONV-020] }
+  UX-001: { file: requirements, title: help returns the workflow, verification: verified, tests: [UX-001] }
+  UX-002: { file: requirements, title: Greeting is available from idle, verification: verified, tests: [UX-002] }
+  UX-003: { file: requirements, title: No turn ends in silence, verification: verified, tests: [UX-003] }
+  UX-004: { file: requirements, title: Failure messages are actionable, verification: verified, tests: [UX-004, UX-004] }
+  UX-005: { file: requirements, title: Long work is acknowledged before it starts, verification: verified, tests: [UX-005] }
+  BATCH-001: { file: requirements, title: Bursty sends assemble into one turn, verification: verified, tests: [BATCH-001, BATCH-001] }
+  BATCH-002: { file: requirements, title: Three photos produce one acknowledgement, verification: verified, tests: [BATCH-002, BATCH-002] }
+  BATCH-003: { file: requirements, title: Buffers are independent per contact, verification: verified, tests: [BATCH-003] }
+  BATCH-004: { file: requirements, title: Text is acted on only for the last message, verification: verified, tests: [BATCH-004] }
+  BATCH-005: { file: requirements, title: Duplicates within one batch are suppressed, verification: verified, tests: [BATCH-005] }
+  BATCH-006: { file: requirements, title: An empty batch is a no-op, verification: verified, tests: [BATCH-006] }
+  BATCH-007: { file: requirements, title: The window opens fresh after closing, verification: verified, tests: [BATCH-007] }
+  BATCH-008: { file: requirements, title: Flush releases buffered items immediately, verification: verified, tests: [BATCH-008] }
+  BATCH-009: { file: requirements, title: Every waiting caller receives the batch once, verification: verified, tests: [BATCH-009] }
+  BATCH-010: { file: requirements, title: Keys are isolated and unknown-key flush is a no-op, verification: verified, tests: [BATCH-010] }
+  BRIEF-001: { file: requirements, title: Free-form text becomes a validated brief, verification: verified, tests: [BRIEF-001] }
+  BRIEF-002: { file: requirements, title: The brief schema constrains the domain, verification: verified, tests: [BRIEF-002] }
+  BRIEF-003: { file: requirements, title: The model field is constrained to a synthetic person, verification: verified, tests: [BRIEF-003] }
+  BRIEF-004: { file: requirements, title: Defaults are tasteful and commercially safe, verification: verified, tests: [BRIEF-004] }
+  BRIEF-005: { file: requirements, title: The brief is confirmed before any generation, verification: verified, tests: [BRIEF-005] }
+  BRIEF-006: { file: requirements, title: Corrections do not lose the original request, verification: verified, tests: [BRIEF-006] }
+  BRIEF-007: { file: requirements, title: The brief determines aspect ratio and image size, verification: verified, tests: [BRIEF-007, BRIEF-007] }
+  GEN-001: { file: requirements, title: Generation goes through the Gemini interactions API, verification: verified, tests: [GEN-001] }
+  GEN-002: { file: requirements, title: The pipeline depends on an interface not on Gemini, verification: verified, tests: [GEN-002] }
+  GEN-003: { file: requirements, title: The prompt is composed from separable layers, verification: verified, tests: [GEN-003, GEN-003, GEN-003, GEN-003, GEN-003] }
+  GEN-004: { file: requirements, title: The model must reproduce the garment faithfully, verification: verified, tests: [GEN-004] }
+  GEN-005: { file: requirements, title: Added text and watermarks are forbidden, verification: verified, tests: [GEN-005, GEN-005] }
+  GEN-006: { file: requirements, title: Reference images are supplied to the provider, verification: verified, tests: [GEN-006] }
+  GEN-007: { file: requirements, title: Reference count is capped, verification: verified, tests: [GEN-007] }
+  GEN-008: { file: requirements, title: A transient failure is retried with backoff, verification: unverified, gap: the retry loop lives only in GeminiImageProvider which no test exercises; the citing test injects FakeImageProvider, finding: F-002, tests: [GEN-008] }
+  GEN-009: { file: requirements, title: A content-policy refusal is never retried, verification: unverified, gap: isContentPolicyError is never executed by any test; the citing test injects FakeImageProvider, finding: F-002, tests: [GEN-009] }
+  GEN-010: { file: requirements, title: Generation is bounded by a timeout, verification: verified, tests: [GEN-010] }
+  GEN-011: { file: requirements, title: The interaction id is captured for edits, verification: verified, tests: [GEN-011, GEN-011] }
+  GEN-012: { file: requirements, title: Generation outcomes are recorded, verification: verified, tests: [GEN-012, GEN-012, GEN-012] }
+  GEN-013: { file: requirements, title: A failed revision returns to review, verification: verified, tests: [GEN-013, GEN-013] }
+  GEN-014: { file: requirements, title: A failed first generation returns to confirm_brief, verification: verified, tests: [GEN-014, GEN-014] }
+  GEN-015: { file: requirements, title: Aspect ratio and image size come from the brief, verification: verified, tests: [GEN-015] }
+  GEN-016: { file: requirements, title: A successful generation is delivered to the user, verification: verified, tests: [GEN-016, GEN-016] }
+  ITER-001: { file: requirements, title: A revision is a chained edit, verification: verified, tests: [ITER-001] }
+  ITER-002: { file: requirements, title: A variation does not chain, verification: verified, tests: [ITER-002, ITER-002] }
+  ITER-003: { file: requirements, title: Revision and variation are mutually exclusive, verification: verified, tests: [ITER-003, ITER-003] }
+  ITER-004: { file: requirements, title: Variation notes are distinct and cycle safely, verification: verified, tests: [ITER-004] }
+  ITER-005: { file: requirements, title: A revision instruction is preserved verbatim, verification: verified, tests: [ITER-005, ITER-005] }
+  MED-001: { file: requirements, title: Media is sniffed never trusted, verification: verified, tests: [MED-001] }
+  MED-002: { file: requirements, title: PNG dimensions are parsed from the header, verification: verified, tests: [MED-002] }
+  MED-003: { file: requirements, title: JPEG dimensions are parsed from the SOF header, verification: verified, tests: [MED-003, MED-003] }
+  MED-004: { file: requirements, title: WebP is accepted, verification: verified, tests: [MED-004, MED-004, MED-004] }
+  MED-005: { file: requirements, title: Oversized payloads are rejected before any API call, verification: verified, tests: [MED-005] }
+  MED-006: { file: requirements, title: Unrecognised bytes are rejected safely, verification: verified, tests: [MED-006, MED-006] }
+  MED-007: { file: requirements, title: Empty payloads are rejected, verification: verified, tests: [MED-007] }
+  MED-008: { file: requirements, title: Undersized images are rejected, verification: verified, tests: [MED-008] }
+  MED-009: { file: requirements, title: A truncated but identifiable image is classified, verification: verified, tests: [MED-009] }
+  MED-010: { file: requirements, title: Identical bytes are stored once, verification: verified, tests: [MED-010] }
+  MED-011: { file: requirements, title: Cost per size is estimated for logging, verification: verified, tests: [MED-011] }
+  WA-001: { file: requirements, title: The verification handshake is honoured, verification: verified, tests: [WA-001] }
+  WA-002: { file: requirements, title: An incorrect verify token is refused, verification: verified, tests: [WA-002] }
+  WA-003: { file: requirements, title: Every payload is signature verified over raw bytes, verification: verified, tests: [WA-003, WA-003, WA-003, WA-003] }
+  WA-004: { file: requirements, title: A missing signature header is rejected, verification: verified, tests: [WA-004] }
+  WA-005: { file: requirements, title: A signature from another secret is rejected, verification: verified, tests: [WA-005] }
+  WA-006: { file: requirements, title: Malformed signatures are rejected without throwing, verification: verified, tests: [WA-006] }
+  WA-007: { file: requirements, title: Inbound text messages are normalised, verification: verified, tests: [WA-007] }
+  WA-008: { file: requirements, title: Inbound image messages keep their caption, verification: verified, tests: [WA-008] }
   WA-009: { file: requirements, title: Outbound sends respect the 24-hour service window, implementation: not_implemented, verification: n/a, finding: F-001, tests: [] }
-  WA-010: { file: requirements, title: Interactive button replies are normalised, tests: [WA-010] }
-  WA-011: { file: requirements, title: Unsupported message types are ignored, tests: [WA-011] }
-  WA-012: { file: requirements, title: Delivery statuses are processed separately, tests: [WA-012, WA-012] }
-  WA-013: { file: requirements, title: A failed status surfaces its error detail, tests: [WA-013] }
-  WA-014: { file: requirements, title: A malformed payload yields empty results, tests: [WA-014] }
-  WA-015: { file: requirements, title: Outbound text goes through the Cloud API, tests: [WA-015, WA-015, WA-015, WA-015] }
-  WA-016: { file: requirements, title: Outbound images are uploaded before being referenced, tests: [WA-016, WA-016, WA-016] }
-  WA-017: { file: requirements, title: Inbound media is fetched in two authenticated hops, tests: [WA-017, WA-017, WA-017] }
-  WA-018: { file: requirements, title: The API version is pinned by configuration, tests: [WA-018] }
-  WA-019: { file: requirements, title: Read receipts are best effort, implementation: partial, gap: markRead is implemented but nothing calls it, finding: F-001, tests: [WA-019, WA-019] }
-  WA-020: { file: requirements, title: Outbound deliveries are recorded, tests: [WA-020] }
-  SIM-001: { file: requirements, title: The product runs locally with no Meta account, tests: [SIM-001, SIM-001] }
-  SIM-002: { file: requirements, title: A browser chat client is served, tests: [SIM-002] }
-  SIM-003: { file: requirements, title: Bot replies are streamed to the client, tests: [SIM-003] }
-  SIM-004: { file: requirements, title: Inbound images can be posted and are stored, tests: [SIM-004, SIM-004, SIM-004] }
-  SIM-005: { file: requirements, title: Invalid inbound requests are rejected with a reason, tests: [SIM-005, SIM-005, SIM-005, SIM-005] }
-  SIM-006: { file: requirements, title: Simulator hosted bytes are retrievable, tests: [SIM-006, SIM-006] }
-  SIM-007: { file: requirements, title: The catalog is listed for the UI, tests: [SIM-007, SIM-007] }
-  SIM-008: { file: requirements, title: A non-simulator channel does not serve the UI, tests: [SIM-008] }
-  SIM-009: { file: requirements, title: Simulator and WhatsApp namespaces are separate, tests: [SIM-009] }
-  PERSIST-001: { file: requirements, title: SQLite via the built-in driver, tests: [PERSIST-001] }
-  PERSIST-002: { file: requirements, title: The schema covers every domain entity, tests: [PERSIST-002, PERSIST-002] }
-  PERSIST-003: { file: requirements, title: Schema application is idempotent, tests: [PERSIST-003, PERSIST-003] }
-  PERSIST-004: { file: requirements, title: Repository methods are typed and constrained, tests: [PERSIST-004, PERSIST-004, PERSIST-004] }
-  PERSIST-005: { file: requirements, title: Session state is reloaded around every step, tests: [PERSIST-005] }
-  PERSIST-006: { file: requirements, title: Asset bytes live in a blob store, tests: [PERSIST-006] }
-  PERSIST-007: { file: requirements, title: The blob store is an interface, tests: [PERSIST-007] }
-  PERSIST-008: { file: requirements, title: Blob keys cannot escape the storage root, tests: [PERSIST-008] }
-  PERSIST-009: { file: requirements, title: Writes are atomic, tests: [PERSIST-009] }
-  PERSIST-010: { file: requirements, title: Message identity is unique per channel id, tests: [PERSIST-010, PERSIST-010] }
-  CATALOG-001: { file: requirements, title: Approving creates a product, tests: [CATALOG-001] }
-  CATALOG-002: { file: requirements, title: Products carry their commercial fields, tests: [CATALOG-002] }
-  CATALOG-003: { file: requirements, title: Assets link to products with an explicit role, tests: [CATALOG-003] }
-  CATALOG-004: { file: requirements, title: The hero asset is a generated image, tests: [CATALOG-004] }
-  CATALOG-005: { file: requirements, title: The current best output becomes the hero, tests: [CATALOG-005] }
-  CATALOG-006: { file: requirements, title: Products are listed newest first, tests: [CATALOG-006] }
-  CATALOG-007: { file: requirements, title: The catalog exports to CSV with the hero reference, tests: [CATALOG-007, CATALOG-007, CATALOG-007] }
-  CATALOG-008: { file: requirements, title: CSV escaping is correct, tests: [CATALOG-008] }
-  CFG-001: { file: requirements, title: Configuration is validated at boot, tests: [CFG-001, CFG-001] }
-  CFG-002: { file: requirements, title: The channel is selected by configuration, tests: [CFG-002] }
-  CFG-003: { file: requirements, title: Channel credentials are asserted before use, tests: [CFG-003] }
-  CFG-004: { file: requirements, title: The image model is configurable, tests: [CFG-004] }
-  CFG-005: { file: requirements, title: The text model is separately configurable, tests: [CFG-005] }
-  CFG-006: { file: requirements, title: The batching window is configurable, tests: [CFG-006] }
-  CFG-007: { file: requirements, title: Limits are configurable and bounded, tests: [CFG-007] }
-  CFG-008: { file: requirements, title: Example configuration documents every variable, tests: [CFG-008] }
-  OBS-001: { file: requirements, title: Structured logging suits each environment, tests: [OBS-001] }
-  OBS-002: { file: requirements, title: A health endpoint checks dependencies, tests: [OBS-002] }
-  OBS-003: { file: requirements, title: Health reports provider configuration state, tests: [OBS-003] }
-  OBS-004: { file: requirements, title: Each generation logs latency cost and remaining budget, tests: [OBS-004] }
-  OBS-005: { file: requirements, title: Failures are logged with diagnostic context, tests: [OBS-005] }
-  SEAM-001: { file: requirements, title: The channel is an interface, tests: [SEAM-001] }
-  SEAM-002: { file: requirements, title: The image engine is an interface, tests: [SEAM-002] }
-  SEAM-003: { file: requirements, title: Implementations are chosen in one place, tests: [SEAM-003] }
-  SEAM-004: { file: requirements, title: A missing key degrades safely, tests: [SEAM-004] }
-  SEAM-005: { file: requirements, title: Simulator and WhatsApp share one pipeline, tests: [SEAM-005] }
-  SEC-001: { file: requirements, title: Inbound webhooks require a valid signature, tests: [SEC-001, SEC-001] }
-  SEC-002: { file: requirements, title: Signature comparison is constant time, tests: [SEC-002] }
-  SEC-003: { file: requirements, title: Secrets are never committed, tests: [SEC-003, SEC-003, SEC-003] }
-  SEC-004: { file: requirements, title: The webhook refuses without its secret, tests: [SEC-004] }
-  SEC-005: { file: requirements, title: Duplicate delivery cannot replay a turn, tests: [SEC-005] }
-  SEC-006: { file: requirements, title: Media and catalog endpoints are unauthenticated and must not be public, implementation: deferred, finding: F-001, gap: unauthenticated by design for the local simulator, verification: n/a, tests: [SEC-006, SEC-006] }
-  SEC-007: { file: requirements, title: Unknown asset ids do not disclose anything, tests: [SEC-007] }
-  CONTENT-001: { file: requirements, title: Real identifiable people are prohibited, tests: [CONTENT-001] }
-  CONTENT-002: { file: requirements, title: Minors are prohibited, tests: [CONTENT-002] }
-  CONTENT-003: { file: requirements, title: The garment must not be restyled, tests: [CONTENT-003] }
-  CONTENT-004: { file: requirements, title: No added text or watermarks, tests: [CONTENT-004] }
-  CONTENT-005: { file: requirements, title: A refusal is a recoverable brief edit, tests: [CONTENT-005] }
-  COST-001: { file: requirements, title: Generations per item are capped, tests: [COST-001] }
-  COST-002: { file: requirements, title: No generation before brief confirmation, tests: [COST-002] }
-  COST-003: { file: requirements, title: Variation batches are bounded by budget, tests: [COST-003, COST-003] }
-  COST-004: { file: requirements, title: Per-call cost is estimated and persisted, tests: [COST-004] }
-  COST-005: { file: requirements, title: A batch does not multiply cost, tests: [COST-005] }
+  WA-010: { file: requirements, title: Interactive button replies are normalised, verification: verified, tests: [WA-010] }
+  WA-011: { file: requirements, title: Unsupported message types are ignored, verification: verified, tests: [WA-011] }
+  WA-012: { file: requirements, title: Delivery statuses are processed separately, verification: verified, tests: [WA-012, WA-012] }
+  WA-013: { file: requirements, title: A failed status surfaces its error detail, verification: verified, tests: [WA-013] }
+  WA-014: { file: requirements, title: A malformed payload yields empty results, verification: verified, tests: [WA-014] }
+  WA-015: { file: requirements, title: Outbound text goes through the Cloud API, verification: verified, tests: [WA-015, WA-015, WA-015, WA-015] }
+  WA-016: { file: requirements, title: Outbound images are uploaded before being referenced, verification: verified, tests: [WA-016, WA-016, WA-016] }
+  WA-017: { file: requirements, title: Inbound media is fetched in two authenticated hops, verification: verified, tests: [WA-017, WA-017, WA-017] }
+  WA-018: { file: requirements, title: The API version is pinned by configuration, verification: verified, tests: [WA-018] }
+  WA-019: { file: requirements, title: Read receipts are best effort, implementation: partial, gap: markRead is implemented but nothing calls it, finding: F-001, verification: verified, tests: [WA-019, WA-019] }
+  WA-020: { file: requirements, title: Outbound deliveries are recorded, verification: verified, tests: [WA-020] }
+  SIM-001: { file: requirements, title: The product runs locally with no Meta account, verification: verified, tests: [SIM-001, SIM-001] }
+  SIM-002: { file: requirements, title: A browser chat client is served, verification: verified, tests: [SIM-002] }
+  SIM-003: { file: requirements, title: Bot replies are streamed to the client, verification: verified, tests: [SIM-003] }
+  SIM-004: { file: requirements, title: Inbound images can be posted and are stored, verification: verified, tests: [SIM-004, SIM-004, SIM-004] }
+  SIM-005: { file: requirements, title: Invalid inbound requests are rejected with a reason, verification: verified, tests: [SIM-005, SIM-005, SIM-005, SIM-005] }
+  SIM-006: { file: requirements, title: Simulator hosted bytes are retrievable, verification: verified, tests: [SIM-006, SIM-006] }
+  SIM-007: { file: requirements, title: The catalog is listed for the UI, verification: verified, tests: [SIM-007, SIM-007] }
+  SIM-008: { file: requirements, title: A non-simulator channel does not serve the UI, verification: unverified, gap: the 409 branch in registerSimulatorRoutes is never driven by a test; the only citing test asserts the configured channel which holds whether or not the guard exists, finding: F-001, tests: [SIM-008] }
+  SIM-009: { file: requirements, title: Simulator and WhatsApp namespaces are separate, verification: verified, tests: [SIM-009] }
+  PERSIST-001: { file: requirements, title: SQLite via the built-in driver, verification: verified, tests: [PERSIST-001] }
+  PERSIST-002: { file: requirements, title: The schema covers every domain entity, verification: verified, tests: [PERSIST-002, PERSIST-002] }
+  PERSIST-003: { file: requirements, title: Schema application is idempotent, verification: verified, tests: [PERSIST-003, PERSIST-003] }
+  PERSIST-004: { file: requirements, title: Repository methods are typed and constrained, verification: verified, tests: [PERSIST-004, PERSIST-004, PERSIST-004] }
+  PERSIST-005: { file: requirements, title: Session state is reloaded around every step, verification: verified, tests: [PERSIST-005] }
+  PERSIST-006: { file: requirements, title: Asset bytes live in a blob store, verification: verified, tests: [PERSIST-006] }
+  PERSIST-007: { file: requirements, title: The blob store is an interface, verification: verified, tests: [PERSIST-007] }
+  PERSIST-008: { file: requirements, title: Blob keys cannot escape the storage root, verification: verified, tests: [PERSIST-008] }
+  PERSIST-009: { file: requirements, title: Writes are atomic, verification: verified, tests: [PERSIST-009] }
+  PERSIST-010: { file: requirements, title: Message identity is unique per channel id, verification: verified, tests: [PERSIST-010, PERSIST-010] }
+  CATALOG-001: { file: requirements, title: Approving creates a product, verification: verified, tests: [CATALOG-001, CATALOG-001] }
+  CATALOG-002: { file: requirements, title: Products carry their commercial fields, verification: verified, tests: [CATALOG-002, CATALOG-002] }
+  CATALOG-003: { file: requirements, title: Assets link to products with an explicit role, verification: verified, tests: [CATALOG-003] }
+  CATALOG-004: { file: requirements, title: The hero asset is a generated image, verification: verified, tests: [CATALOG-004] }
+  CATALOG-005: { file: requirements, title: The current best output becomes the hero, verification: verified, tests: [CATALOG-005] }
+  CATALOG-006: { file: requirements, title: Products are listed newest first, verification: verified, tests: [CATALOG-006] }
+  CATALOG-007: { file: requirements, title: The catalog exports to CSV with the hero reference, verification: verified, tests: [CATALOG-007, CATALOG-007, CATALOG-007] }
+  CATALOG-008: { file: requirements, title: CSV escaping is correct, verification: verified, tests: [CATALOG-008] }
+  CFG-001: { file: requirements, title: Configuration is validated at boot, verification: verified, tests: [CFG-001, CFG-001] }
+  CFG-002: { file: requirements, title: The channel is selected by configuration, verification: verified, tests: [CFG-002] }
+  CFG-003: { file: requirements, title: Channel credentials are asserted before use, verification: verified, tests: [CFG-003] }
+  CFG-004: { file: requirements, title: The image model is configurable, verification: verified, tests: [CFG-004] }
+  CFG-005: { file: requirements, title: The text model is separately configurable, verification: verified, tests: [CFG-005] }
+  CFG-006: { file: requirements, title: The batching window is configurable, verification: verified, tests: [CFG-006] }
+  CFG-007: { file: requirements, title: Limits are configurable and bounded, verification: verified, tests: [CFG-007] }
+  CFG-008: { file: requirements, title: Example configuration documents every variable, verification: verified, tests: [CFG-008] }
+  OBS-001: { file: requirements, title: Structured logging suits each environment, verification: verified, tests: [OBS-001] }
+  OBS-002: { file: requirements, title: A health endpoint checks dependencies, verification: verified, tests: [OBS-002] }
+  OBS-003: { file: requirements, title: Health reports provider configuration state, verification: verified, tests: [OBS-003] }
+  OBS-004: { file: requirements, title: Each generation logs latency cost and remaining budget, verification: verified, tests: [OBS-004] }
+  OBS-005: { file: requirements, title: Failures are logged with diagnostic context, verification: verified, tests: [OBS-005] }
+  SEAM-001: { file: requirements, title: The channel is an interface, verification: verified, tests: [SEAM-001] }
+  SEAM-002: { file: requirements, title: The image engine is an interface, verification: verified, tests: [SEAM-002] }
+  SEAM-003: { file: requirements, title: Implementations are chosen in one place, verification: verified, tests: [SEAM-003] }
+  SEAM-004: { file: requirements, title: A missing key degrades safely, verification: verified, tests: [SEAM-004] }
+  SEAM-005: { file: requirements, title: Simulator and WhatsApp share one pipeline, verification: verified, tests: [SEAM-005] }
+  SEC-001: { file: requirements, title: Inbound webhooks require a valid signature, verification: verified, tests: [SEC-001, SEC-001] }
+  SEC-002: { file: requirements, title: Signature comparison is constant time, verification: verified, tests: [SEC-002] }
+  SEC-003: { file: requirements, title: Secrets are never committed, verification: verified, tests: [SEC-003, SEC-003, SEC-003] }
+  SEC-004: { file: requirements, title: The webhook refuses without its secret, verification: verified, tests: [SEC-004] }
+  SEC-005: { file: requirements, title: Duplicate delivery cannot replay a turn, verification: verified, tests: [SEC-005] }
+  SEC-006: { file: requirements, title: Media and catalog endpoints are unauthenticated and must not be public, implementation: deferred, finding: F-001, gap: registerMediaRoutes and the catalog route are registered unconditionally in src/server.ts and only /sim is channel-gated — switching MESSAGING_CHANNEL to whatsapp leaves these endpoints open with no authentication so put them behind a proxy or auth first, verification: n/a, tests: [SEC-006, SEC-006] }
+  SEC-007: { file: requirements, title: Unknown asset ids do not disclose anything, verification: verified, tests: [SEC-007] }
+  CONTENT-001: { file: requirements, title: Real identifiable people are prohibited, verification: verified, tests: [CONTENT-001] }
+  CONTENT-002: { file: requirements, title: Minors are prohibited, verification: verified, tests: [CONTENT-002] }
+  CONTENT-003: { file: requirements, title: The garment must not be restyled, verification: verified, tests: [CONTENT-003] }
+  CONTENT-004: { file: requirements, title: No added text or watermarks, verification: verified, tests: [CONTENT-004] }
+  CONTENT-005: { file: requirements, title: A refusal is a recoverable brief edit, verification: verified, tests: [CONTENT-005] }
+  COST-001: { file: requirements, title: Generations per item are capped, verification: verified, tests: [COST-001] }
+  COST-002: { file: requirements, title: No generation before brief confirmation, verification: verified, tests: [COST-002] }
+  COST-003: { file: requirements, title: Variation batches are bounded by budget, verification: verified, tests: [COST-003, COST-003] }
+  COST-004: { file: requirements, title: Per-call cost is estimated and persisted, verification: verified, tests: [COST-004] }
+  COST-005: { file: requirements, title: A batch does not multiply cost, verification: verified, tests: [COST-005] }

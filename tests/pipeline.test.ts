@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Repo } from '../src/db/repo.js';
 import { createTestDb } from '../src/db/migrate.js';
-import { Pipeline } from '../src/core/pipeline.js';
+import { KeyedLock, Pipeline } from '../src/core/pipeline.js';
 import { TurnBuffer } from '../src/core/turns.js';
 import { FakeAdapter } from './helpers/fake-adapter.js';
 import { FakeImageProvider } from './helpers/fake-provider.js';
@@ -345,6 +345,41 @@ describe('multi-item sessions', () => {
     expect(products[0]!.sku).toBe('DRESS-001');
   });
 
+  /**
+   * Regression: re-photographing a garment that already has a SKU used to throw
+   * `UNIQUE constraint failed: products.org_id, products.sku` out of the turn.
+   * The user saw only the generic error copy, and because the inbound message
+   * was already recorded, Meta's retry of the same wamid was suppressed — the
+   * text was lost for good.
+   */
+  it('CATALOG-001 CATALOG-002 a repeated SKU reuses the product instead of aborting the turn', async () => {
+    await h.send(h.imageMessage());
+    await h.send(h.textMessage('sku: DRESS-001, studio, white background'));
+    await h.send(h.textMessage('go'));
+    await h.send(h.textMessage('1'));
+
+    const org = h.repo.ensureDefaultOrg();
+    const contact = h.repo.ensureContact(org.id, CONTACT);
+    const first = h.repo.listProducts(org.id)[0]!;
+    expect(first.sku).toBe('DRESS-001');
+
+    // The same garment, photographed again, with the same SKU.
+    await h.send(h.imageMessage());
+    await h.send(h.textMessage('sku: DRESS-001, different backdrop'));
+
+    // The turn must not fail, the session must survive, and the item must be
+    // linked to the one product that owns this SKU.
+    expect(h.adapter.said(/Something went wrong/i)).toBe(false);
+    const session = h.repo.getActiveSession(contact.id);
+    expect(session).toBeDefined();
+    expect(session!.stage).toBe('confirm_brief');
+    expect(session!.product_id).toBe(first.id);
+
+    const products = h.repo.listProducts(org.id);
+    expect(products).toHaveLength(1);
+    expect(products[0]!.sku).toBe('DRESS-001');
+  });
+
   it('CONV-018 allows an explicit reset from any stage, including mid-review', async () => {
     await reachReview(h);
     await h.send(h.textMessage('start over'));
@@ -503,5 +538,85 @@ describe('state machine integrity', () => {
     const fresh = h.repo.getActiveSession(contact.id)!;
     expect(fresh.stage).toBe('idle');
     expect(fresh.last_output_asset_id).toBeNull();
+  });
+});
+
+/**
+ * Resolves after one microtask-queue turn.
+ *
+ * The lock deletes its entry from a `.finally()` handler, which runs after the
+ * caller's `await` resumes, so asserting on `size` immediately would race.
+ */
+const afterCleanup = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+describe('per-session serialisation', () => {
+  /**
+   * Regression: the lock stored `next.catch(...)`, a *new* promise, while the
+   * cleanup compared the stored promise against `next`. They were never equal,
+   * so no entry was ever deleted and the map grew by one entry for every
+   * distinct contact the process ever saw.
+   */
+  it('CONV-004 releases its chain entry once a turn finishes', async () => {
+    const lock = new KeyedLock();
+    await lock.run('contact-a', async () => undefined);
+    await afterCleanup();
+
+    expect(lock.size).toBe(0);
+
+    // Many distinct contacts must not accumulate.
+    for (let i = 0; i < 200; i += 1) {
+      await lock.run(`contact-${i}`, async () => undefined);
+    }
+    await afterCleanup();
+    expect(lock.size).toBe(0);
+  });
+
+  it('CONV-004 keeps a chain entry while work is still in flight', async () => {
+    const lock = new KeyedLock();
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const running = lock.run('contact-a', async () => {
+      await gate;
+    });
+    expect(lock.size).toBe(1);
+
+    release();
+    await running;
+    await afterCleanup();
+    expect(lock.size).toBe(0);
+  });
+
+  it('CONV-004 serialises overlapping turns for the same contact', async () => {
+    const lock = new KeyedLock();
+    const order: string[] = [];
+
+    const first = lock.run('contact-a', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      order.push('first');
+    });
+    const second = lock.run('contact-a', async () => {
+      order.push('second');
+    });
+
+    await Promise.all([first, second]);
+    // FIFO: the second turn cannot start before the first finishes.
+    expect(order).toEqual(['first', 'second']);
+  });
+
+  it('CONV-004 does not let a failed turn reject the next one', async () => {
+    const lock = new KeyedLock();
+
+    await expect(
+      lock.run('contact-a', async () => {
+        throw new Error('turn failed');
+      }),
+    ).rejects.toThrow('turn failed');
+
+    await expect(lock.run('contact-a', async () => 'recovered')).resolves.toBe('recovered');
+    await afterCleanup();
+    expect(lock.size).toBe(0);
   });
 });

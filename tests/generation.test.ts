@@ -17,7 +17,11 @@ import { config } from '../src/config.js';
  * `GEN-001` is deliberately written as an interface contract rather than a claim
  * about the Gemini SDK. The pipeline proves it depends only on `ImageProvider`
  * (`GEN-002`); whether the concrete adapter's SDK call is correct is a separate
- * claim, covered by `scripts/smoke-gemini.ts` and recorded in `PRB-0002`.
+ * claim, covered by `scripts/smoke-gemini.ts` and recorded as `P-2` in
+ * `openspec/changes/requirements-baseline/PROBLEMS.md`. That is also why
+ * `GEN-008` and `GEN-009` carry `verification: unverified`: the retry loop and
+ * the content-policy classification both live in `GeminiImageProvider`, while
+ * every test here injects `FakeImageProvider`.
  */
 
 let seq = 0;

@@ -38,7 +38,11 @@ afterAll(() => {
   }
 });
 
-function fixture(): { root: string; opts: GateOptions; testsDir: string } {
+function fixture(options: { approveSpec?: boolean; statusRow?: string } = {}): {
+  root: string;
+  opts: GateOptions;
+  testsDir: string;
+} {
   const real = resolveOptions();
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-gate-'));
 
@@ -57,10 +61,39 @@ function fixture(): { root: string; opts: GateOptions; testsDir: string } {
 
   const testsDir = path.join(root, 'tests');
   fs.rmSync(path.join(testsDir, 'spec-gate.test.ts'), { force: true });
-  fs.rmSync(path.join(testsDir, 'spec-traceability.test.ts'), { force: true });
+
+  // The real `spec.md` is still a DRAFT (that is the point of the approval
+  // check), so the fixture approves its copy by default. Every falsification
+  // test below then starts from a tree that passes, and breaks exactly one
+  // thing — otherwise the fixture's own unapproved spec would mask the result.
+  if (options.approveSpec !== false) {
+    const specPath = path.join(root, changeRel, 'spec.md');
+    const withStatus = options.statusRow
+      ? fs
+          .readFileSync(specPath, 'utf8')
+          .replace(/^\| \*\*Status\*\* \|.*\|$/m, options.statusRow)
+      : fs.readFileSync(specPath, 'utf8');
+    fs.writeFileSync(
+      specPath,
+      withStatus
+        .replace(/^\| \*\*Status\*\* \|.*\|$/m, '| **Status** | APPROVED |')
+        .replace(/^\| \*\*Approved by\*\* \|.*\|$/m, '| **Approved by** | Fixture Approver |'),
+    );
+  }
 
   tmpRoots.push(root);
-  return { root, opts: { repoRoot: root, excludeTestFiles: [] }, testsDir };
+  // `citationSources` must point at the fixture's copy of the e2e script.
+  // Leaving the default in place would fall back to the real repository's
+  // script, so a fixture that broke that file's citations would still pass.
+  return {
+    root,
+    opts: {
+      repoRoot: root,
+      excludeTestFiles: [],
+      citationSources: [path.join(root, 'scripts', 'verify-e2e.ts')],
+    },
+    testsDir,
+  };
 }
 
 const tracePath = (root: string) =>
@@ -128,12 +161,27 @@ describe('YAML reader', () => {
 describe('gate against the real project', () => {
   const result = runGate();
 
-  it('passes with no violations', () => {
+  it('has no violations other than the unapproved specification', () => {
     const failures = result.checks.filter(
       (c) => c.severity === 'error' && c.violations.length > 0,
     );
-    // If this fails, the violation text names the exact requirement or test.
-    expect(failures.map((c) => `${c.name}: ${c.violations[0]}`)).toEqual([]);
+    // The specification in this repository is still a DRAFT, so the approval
+    // check is *supposed* to fail — that is the gate enforcing `AGENTS.md`
+    // ("do not implement until the specification has an explicit APPROVED
+    // marker") against its own change. Every other check must be clean.
+    expect(failures.map((c) => c.name)).toEqual([
+      'the specification is APPROVED by a named approver',
+    ]);
+    // And it must fail for the approval reason, not an incidental one.
+    expect(failures[0]!.violations.join('\n')).toMatch(/Status is 'DRAFT/);
+  });
+
+  it('marks the requirements no test proves as unverified rather than verified', () => {
+    // Named explicitly so a future edit cannot silently flip them back to
+    // `verified` — the defect this list was created to fix.
+    expect(result.summary.unverified).toEqual(
+      expect.arrayContaining(['GEN-008', 'GEN-009', 'SIM-008']),
+    );
   });
 
   it('covers a substantial requirement set', () => {
@@ -241,7 +289,7 @@ describe('gate fails when it should', () => {
     setEntry(
       root,
       'SIM-003',
-      'file: channels, title: Bot replies are streamed to the client, tests: []',
+      'file: channels, title: Bot replies are streamed to the client, verification: verified, tests: []',
     );
 
     const result = runGate(opts);
@@ -289,7 +337,7 @@ describe('gate fails when it should', () => {
     setEntry(
       root,
       'WA-019',
-      'file: channels, title: Read receipts, implementation: partial, tests: [], finding: PRB-0001',
+      'file: channels, title: Read receipts, implementation: partial, tests: [], finding: F-002',
     );
     const result = runGate(opts);
     expect(findCheck(result, 'partial requirement names its gap')?.violations.join('\n')).toContain(
@@ -354,10 +402,167 @@ describe('gate fails when it should', () => {
 
   it('detects a requirement document missing its metadata block', () => {
     const { root, opts } = fixture();
-    // Requirement files are not metadata-bearing; SPEC and findings are.
+    // Requirement files are not metadata-bearing; SPEC and findings are. Drop
+    // only the ID row, so the Status/approval check still has something to read
+    // and this test fails for the metadata reason alone.
     const specPath = path.join(root, 'openspec', 'changes', changeId, 'spec.md');
     fs.writeFileSync(specPath, fs.readFileSync(specPath, 'utf8').replace(/^\| \*\*ID\*\*.*$/m, ''));
     const result = runGate(opts);
     expect(findCheck(result, 'carries a metadata block').violations.join('\n')).toContain('spec.md');
+  });
+
+  it('detects a requirement that never states its verification', () => {
+    const { root, opts } = fixture();
+    setEntry(root, 'GEN-006', 'file: generation, title: References, tests: [GEN-006]');
+    const result = runGate(opts);
+    expect(findCheck(result, 'use the defined vocabulary')?.violations.join('\n')).toContain(
+      'GEN-006',
+    );
+  });
+});
+
+describe('gate refuses an unapproved specification', () => {
+  const specPath = (root: string) => path.join(root, 'openspec', 'changes', changeId, 'spec.md');
+
+  it('fails when the spec is still a DRAFT, naming the missing approval', () => {
+    const { root, opts } = fixture({ approveSpec: false });
+    const result = runGate(opts);
+    const violations = findCheck(result, 'specification is APPROVED')?.violations.join('\n') ?? '';
+    expect(violations).toContain('DRAFT');
+    expect(violations).toContain('Approved by');
+  });
+
+  it('fails when the spec is approved but names no approver', () => {
+    const { root, opts } = fixture();
+    fs.writeFileSync(
+      specPath(root),
+      fs
+        .readFileSync(specPath(root), 'utf8')
+        .replace(/^\| \*\*Approved by\*\* \|.*\|$/m, '| **Approved by** | — |'),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'specification is APPROVED')?.violations.join('\n')).toContain(
+      'no approver',
+    );
+  });
+
+  it('fails when the spec has no Status row at all', () => {
+    const { root, opts } = fixture();
+    fs.writeFileSync(
+      specPath(root),
+      fs.readFileSync(specPath(root), 'utf8').replace(/^\| \*\*Status\*\* \|.*\|$/m, ''),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'specification is APPROVED')?.violations.join('\n')).toContain(
+      'no `Status` row',
+    );
+  });
+});
+
+describe('gate cannot be satisfied by a test that does not run', () => {
+  it('detects a whole suite wrapped in describe.skip', () => {
+    const { root, opts } = fixture();
+    const testPath = path.join(root, 'tests', 'pipeline.test.ts');
+    const original = fs.readFileSync(testPath, 'utf8');
+    // Wrap the entire file in a skipped suite: the inner `it` calls keep their
+    // CONV-001 citation, so a text-only gate reports full coverage.
+    const wrapped = `describe.skip('skipped wholesale', () => {\n${original}\n});\n`;
+    fs.writeFileSync(testPath, wrapped);
+
+    const result = runGate(opts);
+    expect(findCheck(result, 'actually runs')?.violations.join('\n')).toContain(
+      'skipped suite',
+    );
+    expect(findCheck(result, 'marked verified actually has a citing test')?.violations.join('\n')).toContain(
+      'CONV-001',
+    );
+  });
+
+  it('detects an individual it.skip citing a requirement', () => {
+    const { opts, testsDir } = fixture();
+    fs.writeFileSync(
+      path.join(testsDir, 'skipped.test.ts'),
+      [
+        "import { expect, it } from 'vitest';",
+        "it.skip('CONV-001 is skipped but still cites the requirement', () => { expect(1).toBe(1); });",
+      ].join('\n'),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'actually runs')?.violations.join('\n')).toContain('CONV-001');
+  });
+
+  it('detects an it.todo citing a requirement', () => {
+    const { opts, testsDir } = fixture();
+    fs.writeFileSync(
+      path.join(testsDir, 'todo.test.ts'),
+      ["import { it } from 'vitest';", "it.todo('CONV-001 will be written later');"].join('\n'),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'actually runs')?.violations.join('\n')).toContain('CONV-001');
+  });
+
+  it('detects an emptied test body that still cites a requirement', () => {
+    const { opts, testsDir } = fixture();
+    fs.writeFileSync(
+      path.join(testsDir, 'empty.test.ts'),
+      [
+        "import { it } from 'vitest';",
+        "it('CONV-001 has a title and no assertions at all', () => {});",
+      ].join('\n'),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'asserts something')?.violations.join('\n')).toContain(
+      'no assertion',
+    );
+  });
+
+  it('does not mistake a brace inside a regex literal for a test body', () => {
+    const { opts, testsDir } = fixture();
+    // `said(/Here's the brief/)` contains an apostrophe and a `{`-free regex;
+    // a parser that scans naively for a body sees the regex as code and reports
+    // an assertion where there is none.
+    fs.writeFileSync(
+      path.join(testsDir, 'regex.test.ts'),
+      [
+        "import { it } from 'vitest';",
+        "const said = (_pattern: RegExp): boolean => true;",
+        "it('CONV-001 has no assertion but does call a helper', () => {",
+        "  said(/Here's the brief/);",
+        '});',
+      ].join('\n'),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'asserts something')?.violations.join('\n')).toContain('CONV-001');
+  });
+
+  it('detects an uncited test in a subdirectory', () => {
+    const { opts, testsDir } = fixture();
+    fs.mkdirSync(path.join(testsDir, 'unit'), { recursive: true });
+    fs.writeFileSync(
+      path.join(testsDir, 'unit', 'untethered.test.ts'),
+      [
+        "import { expect, it } from 'vitest';",
+        "it('does something without naming a requirement', () => { expect(1).toBe(1); });",
+      ].join('\n'),
+    );
+    const result = runGate(opts);
+    // The non-recursive scan this gate used to do would not even see the file.
+    expect(findCheck(result, 'every test cites at least one requirement')?.violations.join('\n')).toContain(
+      'does something without naming',
+    );
+  });
+
+  it('detects an orphan citation in a subdirectory', () => {
+    const { opts, testsDir } = fixture();
+    fs.mkdirSync(path.join(testsDir, 'unit'), { recursive: true });
+    fs.writeFileSync(
+      path.join(testsDir, 'unit', 'bogus.test.ts'),
+      [
+        "import { expect, it } from 'vitest';",
+        "it('ZZZ-999 cites a requirement that does not exist', () => { expect(1).toBe(1); });",
+      ].join('\n'),
+    );
+    const result = runGate(opts);
+    expect(findCheck(result, 'cited by a test exists')?.violations.join('\n')).toContain('ZZZ-999');
   });
 });

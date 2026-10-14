@@ -4,10 +4,11 @@ import { WhatsAppAdapter } from '../src/messaging/whatsapp.js';
 /**
  * Outbound WhatsApp Cloud API behaviour.
  *
- * This path had **no** automated coverage at all (PRB-0003 G2): every pipeline
- * test used a fake adapter, which replaces the code under test rather than
- * exercising it. Since WhatsApp is the real channel, the outbound calls are the
- * largest shipping risk in the project.
+ * This path had **no** automated coverage at all: every pipeline test used a
+ * fake adapter, which replaces the code under test rather than exercising it.
+ * Since WhatsApp is the real channel, the outbound calls were the largest
+ * shipping risk in the project. The adapter now takes injected credentials and
+ * `fetch`, so this file exercises the real request-building code.
  *
  * Meta is not contacted. `fetch` is injected, so these assert the precise HTTP
  * requests the adapter makes — URL, method, auth header, and body shape.

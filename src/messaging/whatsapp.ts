@@ -197,9 +197,8 @@ export type WhatsAppCredentials = {
 export type WhatsAppAdapterDeps = {
   /**
    * Credential override. Present so the outbound path can be tested without
-   * environment credentials and without a live Meta account — that path is
-   * otherwise unexercised, which is the largest shipping risk in the project
-   * (PRB-0003 G2).
+   * environment credentials and without a live Meta account — that path was
+   * otherwise unexercised, which was the largest shipping risk in the project.
    */
   credentials?: WhatsAppCredentials;
   /** Injectable for tests; defaults to the global fetch. */
