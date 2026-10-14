@@ -1,0 +1,27 @@
+name: Agent policy
+
+on:
+  pull_request:
+    types: [opened, edited, ready_for_review, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  approved-spec-reference:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a specification reference
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if ! printf '%s' "$PR_BODY" | grep -q 'openspec/changes/'; then
+            echo 'Pull requests must reference their approved spec path.'
+            exit 1
+          fi
+          if ! printf '%s' "$PR_BODY" | grep -q '\[x\] Relevant checks pass locally'; then
+            echo 'The verification checklist must be completed before review.'
+            exit 1
+          fi

@@ -1,0 +1,26 @@
+name: Feature request
+description: Start a specification-driven feature request.
+title: "feat: "
+labels: ["agent:discovery"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the desired outcome. The requirements agent will ask focused follow-up questions before implementation is allowed.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Who is this for, what should change, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or references
+      description: Optional screenshots, examples, links, or existing behavior.
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Known constraints
+      description: Optional deadline, compatibility, security, performance, or scope constraints.
