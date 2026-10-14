@@ -40,7 +40,7 @@ to keep it honest.
 
 | Claim | Class | Basis |
 |---|---|---|
-| 225 tests pass against the current implementation | `OBSERVED EVIDENCE` | Test suite |
+| 242 tests pass against the current implementation | `OBSERVED EVIDENCE` | Test suite |
 | The implementation predates this specification | `OBSERVED EVIDENCE` | Git history; `spec.md` created after the code |
 | A spec claiming to have generated existing code would be false | `REASONED INFERENCE` | Definitional |
 | Several capabilities exist but are unwired | `OBSERVED EVIDENCE` | `F-001` |

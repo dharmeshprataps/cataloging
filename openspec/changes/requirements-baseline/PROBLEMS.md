@@ -1,5 +1,20 @@
 # Problems and known deviations — `requirements-baseline`
 
+| Field | Value |
+|---|---|
+| **ID** | `PROBLEMS-REQ-BASELINE` |
+| **Title** | Open problems and known deviations in the requirement baseline |
+| **Owner** | Dharmesh Pratap Singh (operator) |
+| **Status** | ACTIVE |
+| **Created** | 2026-10-14 |
+| **Last modified** | 2026-10-14 |
+| **Spec** | `spec.md` v1.0 |
+| **Source classification** | OBSERVED |
+| **Confidence** | VERIFIED |
+| **Supersedes** | — |
+| **Superseded by** | — |
+| **Dependencies** | `spec.md` §§5, 7; `requirements.md`; `findings/` |
+
 Referenced from [`spec.md`](spec.md) §§5 and 7. Every requirement that is not
 `implemented` links here, so a reader cannot mistake a gap for working behaviour.
 

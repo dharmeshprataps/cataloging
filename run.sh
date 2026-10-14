@@ -6,55 +6,54 @@
 # "different Team IDs"). The test runner and parts of the toolchain need those.
 # So we prefer a capable system Node and only fall back to the bundled one.
 #
-# Override with NODE_BIN=/path/to/node if you need a specific runtime.
+# This script contains **no absolute path to any machine's directories**. It
+# used to derive both `node` and `pnpm` from one hardcoded developer path, so
+# `./test.sh` and `./run.sh tsx scripts/spec-status.ts` failed on any checkout
+# without it — including the clean checkout `spec.md` §9 says this file exists to
+# serve. The selection logic now lives in `scripts/lib/tooling.ts`, where a test
+# can execute it, and this script only finds a Node able to run that file:
+#
+#   1. `$NODE_BIN`, when set.
+#   2. the first `node` on `$PATH`; then `/opt/homebrew/bin`, `/usr/local/bin`,
+#      `/usr/bin`. No version filter here — `tooling.ts` applies the >= 24
+#      preference and reports an old runtime rather than refusing to start.
+#   3. `$DSH_RUNTIME_ROOT/node/bin/node`, when set.
+#
+# Overrides: `NODE_BIN`, `PNPM_BIN`, `DSH_RUNTIME_ROOT`.
 set -euo pipefail
 
-ROOT="/Users/dharmesh/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies"
-BUNDLED="$ROOT/node/bin/node"
-PNPM="$ROOT/pnpm/bin/pnpm.mjs"
-MIN_MAJOR=24
+cd "$(dirname "$0")"
 
-version_major() {
-  "$1" -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0
-}
-
-# NODE_BIN wins; otherwise the first system Node >= 24; otherwise the bundled one.
-NODE=""
+BOOTSTRAP_NODE=""
 if [[ -n "${NODE_BIN:-}" && -x "${NODE_BIN}" ]]; then
-  NODE="$NODE_BIN"
+  BOOTSTRAP_NODE="$NODE_BIN"
 else
-  for candidate in "$(command -v node 2>/dev/null || true)" /opt/homebrew/bin/node /usr/local/bin/node; do
+  for candidate in "$(command -v node 2>/dev/null || true)" \
+                   /opt/homebrew/bin/node \
+                   /usr/local/bin/node \
+                   /usr/bin/node \
+                   "${DSH_RUNTIME_ROOT:-}/node/bin/node"; do
     [[ -n "$candidate" && -x "$candidate" ]] || continue
-    if (( $(version_major "$candidate") >= MIN_MAJOR )); then
-      NODE="$candidate"
-      break
-    fi
+    BOOTSTRAP_NODE="$candidate"
+    break
   done
 fi
 
-if [[ -z "$NODE" ]]; then
-  if [[ -x "$BUNDLED" ]]; then
-    echo "warning: falling back to the bundled Node ($BUNDLED)." >&2
-    echo "warning: native modules may fail to load; set NODE_BIN to a system Node >= $MIN_MAJOR." >&2
-    NODE="$BUNDLED"
-  else
-    echo "No usable Node runtime found. Install Node >= $MIN_MAJOR or set NODE_BIN." >&2
-    exit 1
-  fi
+if [[ -z "$BOOTSTRAP_NODE" ]]; then
+  echo "No Node runtime found. Install Node >= 24, or set NODE_BIN=/path/to/node" >&2
+  echo "(or DSH_RUNTIME_ROOT=/path/to/bundled/runtime)." >&2
+  exit 1
 fi
 
-case "${1:-}" in
-  pnpm)   shift; exec "$NODE" "$PNPM" "$@" ;;
-  node)   shift; exec "$NODE" "$@" ;;
-  tsx)    shift; exec "$NODE" "$PWD/node_modules/tsx/dist/cli.mjs" "$@" ;;
-  vitest) shift; exec "$NODE" "$PWD/node_modules/vitest/vitest.mjs" "$@" ;;
-  tsc)    shift; exec "$NODE" "$PWD/node_modules/typescript/bin/tsc" "$@" ;;
-  which)
-    echo "$NODE"
-    exit 0
-    ;;
-  *)
-    echo "usage: $0 {pnpm|node|tsx|vitest|tsc|which} [args...]" >&2
-    exit 2
-    ;;
-esac
+# The launcher is TypeScript-free but reaches the resolver in `lib/tooling.ts`,
+# which needs a runtime that can strip types. Node >= 22.18 does so by default
+# (that path is checked in `tooling.ts`); older runtimes need the flag. A
+# bootstrap Node too old to strip types is still usable this way, and the
+# launcher re-executes under the runtime the resolver picks.
+NODE_MAJOR_MINOR=$("$BOOTSTRAP_NODE" -p 'process.versions.node.split(".").slice(0,2).join(".")' 2>/dev/null || echo "0.0")
+NODE_ARGS=()
+if [[ "$(printf '%s\n22.18\n' "$NODE_MAJOR_MINOR" | sort -V | head -1)" != "22.18" ]]; then
+  NODE_ARGS=(--experimental-strip-types)
+fi
+
+exec "$BOOTSTRAP_NODE" "${NODE_ARGS[@]+"${NODE_ARGS[@]}"}" "$PWD/scripts/run-tool.mjs" "$@"
